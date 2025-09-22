@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Firebase Studio
 
 This is a NextJS starter in Firebase Studio.
@@ -24,3 +25,5 @@ This project uses Genkit and the Google AI Gemini models to power its AI feature
     2.  Get a phone number that supports SMS and/or WhatsApp.
     3.  Configure the messaging webhook for that number to point to your deployed application's webhook endpoint.
     4.  Add the necessary API keys and auth tokens (e.g., `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`) to your `.env` file.
+=======
+
