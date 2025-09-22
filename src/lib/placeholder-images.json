@@ -1,0 +1,10 @@
+{
+  "placeholderImages": [
+    {
+      "id": "bot-avatar",
+      "description": "Avatar for the AI assistant",
+      "imageUrl": "https://picsum.photos/seed/bot/100/100",
+      "imageHint": "robot face"
+    }
+  ]
+}
