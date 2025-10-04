@@ -1,7 +1,4 @@
 <<<<<<< HEAD
-# Firebase Studio
-
-This is a NextJS starter in Firebase Studio.
 
 To get started, take a look at src/app/page.tsx.
 
@@ -27,3 +24,6 @@ This project uses Genkit and the Google AI Gemini models to power its AI feature
     4.  Add the necessary API keys and auth tokens (e.g., `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`) to your `.env` file.
 =======
 
+Test Credentials:
+User Login: Phone: +919876543210, Password: password123
+Admin Login: Email: admin@arogyasetu.gov, Password: admin123

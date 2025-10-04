@@ -1,4 +1,6 @@
 
+'use client';
+
 import Link from 'next/link';
 import { Bot, User, Lock, Phone, Languages, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,8 +27,128 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Logo } from '@/components/icons';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { login } = useAuth();
+  const [selectedLanguage, setSelectedLanguage] = useState('');
+  const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Mock authentication functions
+  const handleUserSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setMessage('');
+
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('name') as string;
+    const phone = formData.get('phone') as string;
+    const language = formData.get('language') as string;
+    const password = formData.get('password') as string;
+
+    // Simple validation
+    if (!name || !phone || !language || !password) {
+      setMessage('Please fill in all fields');
+      setIsLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setMessage('Password must be at least 6 characters');
+      setIsLoading(false);
+      return;
+    }
+
+    // Simulate API call
+    setTimeout(() => {
+      const userData = {
+        id: Date.now(),
+        name,
+        phone,
+        language,
+        role: 'user' as const,
+      };
+      login(userData);
+      setMessage('Account created successfully!');
+      router.push('/chat');
+    }, 1000);
+  };
+
+  const handleUserLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setMessage('');
+
+    const formData = new FormData(e.currentTarget);
+    const phone = formData.get('phone') as string;
+    const password = formData.get('password') as string;
+
+    // Simple validation
+    if (!phone || !password) {
+      setMessage('Please fill in all fields');
+      setIsLoading(false);
+      return;
+    }
+
+    // Mock authentication
+    setTimeout(() => {
+      if (phone === '+919876543210' && password === 'password123') {
+        const userData = {
+          id: 1,
+          name: 'John Doe',
+          phone,
+          language: 'en',
+          role: 'user' as const,
+        };
+        login(userData);
+        setMessage('Login successful!');
+        router.push('/chat');
+      } else {
+        setMessage('Invalid phone number or password');
+        setIsLoading(false);
+      }
+    }, 1000);
+  };
+
+  const handleAdminLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setMessage('');
+
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    // Simple validation
+    if (!email || !password) {
+      setMessage('Please fill in all fields');
+      setIsLoading(false);
+      return;
+    }
+
+    // Mock authentication
+    setTimeout(() => {
+      if (email === 'admin@arogyasetu.gov' && password === 'admin123') {
+        const adminData = {
+          id: 2,
+          name: 'Admin User',
+          email,
+          role: 'admin' as const,
+        };
+        login(adminData);
+        setMessage('Admin login successful!');
+        router.push('/admin');
+      } else {
+        setMessage('Invalid email or password');
+        setIsLoading(false);
+      }
+    }, 1000);
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
        <header className="px-4 lg:px-6 h-14 flex items-center bg-card shadow-sm">
@@ -103,36 +225,47 @@ export default function LoginPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="name"><User className="inline-block mr-2" />Name</Label>
-                            <Input id="name" placeholder="John Doe" required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="phone"><Phone className="inline-block mr-2" />Phone Number</Label>
-                            <Input id="phone" type="tel" placeholder="+91 98765 43210" required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="language"><Languages className="inline-block mr-2" />Preferred Language</Label>
-                             <Select>
-                                <SelectTrigger id="language">
-                                    <SelectValue placeholder="Select a language" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="en">English</SelectItem>
-                                    <SelectItem value="hi">Hindi</SelectItem>
-                                    <SelectItem value="bn">Bengali</SelectItem>
-                                    <SelectItem value="te">Telugu</SelectItem>
-                                    <SelectItem value="kn">Kannada</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password"><Lock className="inline-block mr-2" />Password</Label>
-                            <Input id="password" type="password" required />
-                        </div>
-                        <Button type="submit" className="w-full">
-                            Create Account
-                        </Button>
+                        {message && (
+                            <div className={`p-3 rounded-md text-sm ${
+                                message.includes('successful') 
+                                    ? 'bg-green-50 text-green-700 border border-green-200' 
+                                    : 'bg-red-50 text-red-700 border border-red-200'
+                            }`}>
+                                {message}
+                            </div>
+                        )}
+                        <form onSubmit={handleUserSignup} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="name"><User className="inline-block mr-2" />Name</Label>
+                                <Input id="name" name="name" placeholder="John Doe" required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="phone"><Phone className="inline-block mr-2" />Phone Number</Label>
+                                <Input id="phone" name="phone" type="tel" placeholder="+91 98765 43210" required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="language"><Languages className="inline-block mr-2" />Preferred Language</Label>
+                                 <Select name="language" value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                                    <SelectTrigger id="language">
+                                        <SelectValue placeholder="Select a language" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="en">English</SelectItem>
+                                        <SelectItem value="hi">Hindi</SelectItem>
+                                        <SelectItem value="bn">Bengali</SelectItem>
+                                        <SelectItem value="te">Telugu</SelectItem>
+                                        <SelectItem value="kn">Kannada</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="password"><Lock className="inline-block mr-2" />Password</Label>
+                                <Input id="password" name="password" type="password" required />
+                            </div>
+                            <Button type="submit" className="w-full" disabled={isLoading}>
+                                {isLoading ? 'Creating Account...' : 'Create Account'}
+                            </Button>
+                        </form>
                     </CardContent>
                     </Card>
                 </TabsContent>
@@ -145,17 +278,28 @@ export default function LoginPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                         <div className="space-y-2">
-                            <Label htmlFor="login-phone"><Phone className="inline-block mr-2" />Phone Number</Label>
-                            <Input id="login-phone" type="tel" placeholder="+91 98765 43210" required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="login-password"><Lock className="inline-block mr-2" />Password</Label>
-                            <Input id="login-password" type="password" required />
-                        </div>
-                        <Button type="submit" className="w-full">
-                            Login
-                        </Button>
+                        {message && (
+                            <div className={`p-3 rounded-md text-sm ${
+                                message.includes('successful') 
+                                    ? 'bg-green-50 text-green-700 border border-green-200' 
+                                    : 'bg-red-50 text-red-700 border border-red-200'
+                            }`}>
+                                {message}
+                            </div>
+                        )}
+                        <form onSubmit={handleUserLogin} className="space-y-4">
+                             <div className="space-y-2">
+                                <Label htmlFor="login-phone"><Phone className="inline-block mr-2" />Phone Number</Label>
+                                <Input id="login-phone" name="phone" type="tel" placeholder="+91 98765 43210" required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="login-password"><Lock className="inline-block mr-2" />Password</Label>
+                                <Input id="login-password" name="password" type="password" required />
+                            </div>
+                            <Button type="submit" className="w-full" disabled={isLoading}>
+                                {isLoading ? 'Logging in...' : 'Login'}
+                            </Button>
+                        </form>
                     </CardContent>
                     </Card>
                 </TabsContent>
@@ -168,17 +312,28 @@ export default function LoginPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="admin-email"><Mail className="inline-block mr-2" />Email</Label>
-                            <Input id="admin-email" type="email" placeholder="admin@example.gov" required />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="admin-password"><Lock className="inline-block mr-2" />Password</Label>
-                            <Input id="admin-password" type="password" required />
-                        </div>
-                        <Button type="submit" className="w-full">
-                            Admin Login
-                        </Button>
+                        {message && (
+                            <div className={`p-3 rounded-md text-sm ${
+                                message.includes('successful') 
+                                    ? 'bg-green-50 text-green-700 border border-green-200' 
+                                    : 'bg-red-50 text-red-700 border border-red-200'
+                            }`}>
+                                {message}
+                            </div>
+                        )}
+                        <form onSubmit={handleAdminLogin} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="admin-email"><Mail className="inline-block mr-2" />Email</Label>
+                                <Input id="admin-email" name="email" type="email" placeholder="admin@example.gov" required />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="admin-password"><Lock className="inline-block mr-2" />Password</Label>
+                                <Input id="admin-password" name="password" type="password" required />
+                            </div>
+                            <Button type="submit" className="w-full" disabled={isLoading}>
+                                {isLoading ? 'Logging in...' : 'Admin Login'}
+                            </Button>
+                        </form>
                     </CardContent>
                     </Card>
                 </TabsContent>

@@ -3,6 +3,7 @@
 import { analyzeSymptoms } from '@/ai/flows/symptom-analysis';
 import { getHealthInfo } from '@/ai/flows/health-information-retrieval';
 import { convertTextToSpeech } from '@/ai/flows/text-to-speech';
+import { twilioService } from '@/lib/twilio';
 import { z } from 'zod';
 import type { ActionResult, TextToSpeechAction } from '@/lib/types';
 
@@ -74,5 +75,270 @@ export async function getAudioForText(
   } catch(e) {
     console.error(e);
     return { error: 'Failed to convert text to speech.' };
+  }
+}
+
+// Authentication schemas
+const userSignupSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+  language: z.string().min(1, 'Please select a language'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+const userLoginSchema = z.object({
+  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+const adminLoginSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(1, 'Password is required'),
+});
+
+// Mock user database (in a real app, this would be a proper database)
+const mockUsers = [
+  { id: 1, name: 'John Doe', phone: '+919876543210', language: 'en', password: 'password123', role: 'user' },
+  { id: 2, name: 'Admin User', email: 'admin@arogyasetu.gov', password: 'admin123', role: 'admin' },
+];
+
+export async function userSignup(
+  prevState: any,
+  formData: FormData
+): Promise<{ success: boolean; message: string; redirect?: string }> {
+  const rawData = {
+    name: formData.get('name'),
+    phone: formData.get('phone'),
+    language: formData.get('language'),
+    password: formData.get('password'),
+  };
+
+  const validatedFields = userSignupSchema.safeParse(rawData);
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      message: validatedFields.error.issues[0].message || 'Invalid input provided.',
+    };
+  }
+
+  const { name, phone, language, password } = validatedFields.data;
+
+  // Check if user already exists
+  const existingUser = mockUsers.find(user => user.phone === phone);
+  if (existingUser) {
+    return {
+      success: false,
+      message: 'User with this phone number already exists.',
+    };
+  }
+
+  // In a real app, you would hash the password and save to database
+  const newUser = {
+    id: mockUsers.length + 1,
+    name,
+    phone,
+    language,
+    password, // In real app: await bcrypt.hash(password, 10)
+    role: 'user' as const,
+  };
+
+  mockUsers.push(newUser);
+
+  return {
+    success: true,
+    message: 'Account created successfully!',
+    redirect: '/chat',
+  };
+}
+
+export async function userLogin(
+  prevState: any,
+  formData: FormData
+): Promise<{ success: boolean; message: string; redirect?: string }> {
+  const rawData = {
+    phone: formData.get('phone'),
+    password: formData.get('password'),
+  };
+
+  const validatedFields = userLoginSchema.safeParse(rawData);
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      message: validatedFields.error.issues[0].message || 'Invalid input provided.',
+    };
+  }
+
+  const { phone, password } = validatedFields.data;
+
+  // Find user
+  const user = mockUsers.find(u => u.phone === phone && u.role === 'user');
+  if (!user) {
+    return {
+      success: false,
+      message: 'Invalid phone number or password.',
+    };
+  }
+
+  // In a real app, you would compare hashed passwords
+  if (user.password !== password) {
+    return {
+      success: false,
+      message: 'Invalid phone number or password.',
+    };
+  }
+
+  return {
+    success: true,
+    message: 'Login successful!',
+    redirect: '/chat',
+  };
+}
+
+export async function adminLogin(
+  prevState: any,
+  formData: FormData
+): Promise<{ success: boolean; message: string; redirect?: string }> {
+  const rawData = {
+    email: formData.get('email'),
+    password: formData.get('password'),
+  };
+
+  const validatedFields = adminLoginSchema.safeParse(rawData);
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      message: validatedFields.error.issues[0].message || 'Invalid input provided.',
+    };
+  }
+
+  const { email, password } = validatedFields.data;
+
+  // Find admin user
+  const admin = mockUsers.find(u => u.email === email && u.role === 'admin');
+  if (!admin) {
+    return {
+      success: false,
+      message: 'Invalid email or password.',
+    };
+  }
+
+  // In a real app, you would compare hashed passwords
+  if (admin.password !== password) {
+    return {
+      success: false,
+      message: 'Invalid email or password.',
+    };
+  }
+
+  return {
+    success: true,
+    message: 'Admin login successful!',
+    redirect: '/admin',
+  };
+}
+
+// Twilio messaging actions
+const whatsappMessageSchema = z.object({
+  phoneNumber: z.string().min(10, 'Phone number must be at least 10 digits'),
+  message: z.string().min(1, 'Message is required'),
+});
+
+export async function sendWhatsAppMessage(
+  prevState: any,
+  formData: FormData
+): Promise<{ success: boolean; message: string }> {
+  const rawData = {
+    phoneNumber: formData.get('phoneNumber'),
+    message: formData.get('message'),
+  };
+
+  const validatedFields = whatsappMessageSchema.safeParse(rawData);
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      message: validatedFields.error.issues[0].message || 'Invalid input provided.',
+    };
+  }
+
+  const { phoneNumber, message } = validatedFields.data;
+
+  try {
+    const result = await twilioService.sendWhatsAppMessage({
+      to: phoneNumber,
+      body: message,
+    });
+
+    if (result.success) {
+      return {
+        success: true,
+        message: 'WhatsApp message sent successfully!',
+      };
+    } else {
+      return {
+        success: false,
+        message: `Failed to send message: ${result.error}`,
+      };
+    }
+  } catch (error) {
+    console.error('WhatsApp message error:', error);
+    return {
+      success: false,
+      message: 'An unexpected error occurred while sending the message.',
+    };
+  }
+}
+
+const smsMessageSchema = z.object({
+  phoneNumber: z.string().min(10, 'Phone number must be at least 10 digits'),
+  message: z.string().min(1, 'Message is required'),
+});
+
+export async function sendSMSMessage(
+  prevState: any,
+  formData: FormData
+): Promise<{ success: boolean; message: string }> {
+  const rawData = {
+    phoneNumber: formData.get('phoneNumber'),
+    message: formData.get('message'),
+  };
+
+  const validatedFields = smsMessageSchema.safeParse(rawData);
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      message: validatedFields.error.issues[0].message || 'Invalid input provided.',
+    };
+  }
+
+  const { phoneNumber, message } = validatedFields.data;
+
+  try {
+    const result = await twilioService.sendSMSMessage({
+      to: phoneNumber,
+      body: message,
+    });
+
+    if (result.success) {
+      return {
+        success: true,
+        message: 'SMS message sent successfully!',
+      };
+    } else {
+      return {
+        success: false,
+        message: `Failed to send message: ${result.error}`,
+      };
+    }
+  } catch (error) {
+    console.error('SMS message error:', error);
+    return {
+      success: false,
+      message: 'An unexpected error occurred while sending the message.',
+    };
   }
 }

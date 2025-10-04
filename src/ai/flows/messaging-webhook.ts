@@ -18,14 +18,13 @@ import { analyzeSymptoms } from './symptom-analysis';
 import { getHealthInfo } from './health-information-retrieval';
 
 // Simplified schema based on what a provider like Twilio might send for SMS or WhatsApp.
-export const MessagingWebhookInputSchema = z.object({
+const MessagingWebhookInputSchema = z.object({
   From: z.string().describe('The phone number or identifier that sent the message (e.g., +14155238886).'),
   Body: z.string().describe('The text of the incoming message.'),
 });
 export type MessagingWebhookInput = z.infer<typeof MessagingWebhookInputSchema>;
 
-
-export const MessagingWebhookOutputSchema = z.object({
+const MessagingWebhookOutputSchema = z.object({
     body: z.string().describe('The text of the message to send back to the user.'),
 });
 export type MessagingWebhookOutput = z.infer<typeof MessagingWebhookOutputSchema>;
@@ -50,11 +49,14 @@ const messagingWebhookFlow = ai.defineFlow(
     // A more advanced implementation could use an AI prompt for classification.
     if (userMessage.includes('symptom') || userMessage.includes('feel')) {
       const result = await analyzeSymptoms({ symptoms: input.Body });
-      responseText = `Possible Conditions: ${result.possibleConditions}. Recommended Actions: ${result.recommendedActions}. Disclaimer: This is not a medical diagnosis.`;
+      responseText = `🔍 Symptom Analysis:\n\nPossible Conditions: ${result.possibleConditions}\n\nRecommended Actions: ${result.recommendedActions}\n\n⚠️ Disclaimer: This is not a medical diagnosis. Please consult a healthcare professional.`;
     } else {
       const result = await getHealthInfo({ query: input.Body });
-      responseText = result.summary;
+      responseText = `🏥 Health Information:\n\n${result.summary}\n\n⚠️ Disclaimer: This is general health information. Please consult a healthcare professional for medical advice.`;
     }
+    
+    // Note: Response will be sent via the webhook route
+    console.log('Generated response for:', input.From, responseText);
     
     return {
       body: responseText,
