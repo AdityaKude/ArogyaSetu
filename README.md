@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 2a2b77c50d0653927a59adb2fb8d3313d8a36478
 
 To get started, take a look at src/app/page.tsx.
 
