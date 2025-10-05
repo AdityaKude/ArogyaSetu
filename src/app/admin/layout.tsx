@@ -7,6 +7,7 @@ import {
   LineChart,
   Package2,
   CalendarClock,
+  MessageSquareText,
 } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -70,6 +71,13 @@ export default function AdminLayout({
               >
                 <Users className="h-4 w-4" />
                 Users
+              </Link>
+              <Link
+                href="/admin/messages"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary"
+              >
+                <MessageSquareText className="h-4 w-4" />
+                Messages
               </Link>
               <Link
                 href="/admin/analytics"
