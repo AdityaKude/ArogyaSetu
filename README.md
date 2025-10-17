@@ -1,3 +1,4 @@
+
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -154,7 +155,7 @@ Copy code
 | **IIIT-ISL Dataset** | Indian Sign Language recognition | [IIIT Hyderabad CVIT](https://cvit.iiit.ac.in/research/projects/cvit-projects/isl) |
 | **MoHFW Data** | Vaccination & disease info | [https://www.mohfw.gov.in](https://www.mohfw.gov.in) |
 | **IDSP API** | Real-time outbreak tracking | [https://idsp.nic.in](https://idsp.nic.in) |
-
+ https://www.kaggle.com/datasets
 ---
 
 ## 🔬 Implementation Roadmap
@@ -162,10 +163,10 @@ Copy code
 | Phase | Milestone | Status |
 |-------|------------|---------|
 | 🧩 Phase 1 | Problem analysis, architecture, dataset research | ✅ Completed |
-| ⚙️ Phase 2 | Voice + Text chatbot (Flask + Dialogflow) | 🔄 In Progress |
+| ⚙️ Phase 2 | Voice + Text chatbot (Flask + Dialogflow) | ✅ Completed |
 | 🖐 Phase 3 | ISL & Facial detection modules | 🕐 Planned |
-| 💬 Phase 4 | WhatsApp & SMS integration (Twilio) | 🕐 Planned |
-| 📊 Phase 5 | Admin Dashboard + Analytics | 🕐 Planned |
+| 💬 Phase 4 | WhatsApp & SMS integration (Twilio) | ✅ Completed |
+| 📊 Phase 5 | Admin Dashboard + Analytics | ✅ Completed|
 | ☁️ Phase 6 | Cloud deployment (Render / Firebase) | 🕐 Planned |
 
 ---

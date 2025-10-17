@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState, useId, useActionState } from 'react';
+import { useEffect, useRef, useState, useId, useActionState, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
-import { submitUserMessage, getAudioForText, analyzeDiseaseFromImage } from '@/app/actions';
-import type { ActionResult, DisplayMessage } from '@/lib/types';
+import { submitUserMessage, getAudioForText, analyzeDiseaseFromImage, analyzeVoiceTranscript, analyzeAudioFile } from '@/app/actions';
+import type { ActionResult, DisplayMessage, VoiceAnalysisAction, AudioAnalysisAction, ImageDiseaseAnalysisAction } from '@/lib/types';
 import type { SymptomAnalysisOutput } from '@/ai/flows/symptom-analysis';
 import type { HealthInfoOutput } from '@/ai/flows/health-information-retrieval';
 import { useToast } from '@/hooks/use-toast';
@@ -28,6 +28,8 @@ import {
   Volume2,
   Waves,
   Image as ImageIcon,
+  FileAudio,
+  Music
 } from 'lucide-react';
 import { LoadingDots } from './icons';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -38,6 +40,21 @@ const initialMessageState: ActionResult = {
   type: null,
   payload: null,
 };
+
+const initialAudioAnalysisState: AudioAnalysisAction = {
+    success: false,
+    message: '',
+}
+
+const initialImageAnalysisState: ImageDiseaseAnalysisAction = {
+    success: false,
+    message: '',
+}
+
+const initialVoiceAnalysisState: VoiceAnalysisAction = {
+    success: false,
+    message: '',
+}
 
 function PlayAudioButton({ text }: { text: string }) {
   const [audio, setAudio] = useState<string | undefined>(undefined);
@@ -113,12 +130,18 @@ function ChatMessageContent({
 
 export function ChatInterface() {
   const { toast } = useToast();
+  const [isPending, startTransition] = useTransition();
+
   const [messageState, messageAction] = useActionState(
     submitUserMessage,
     initialMessageState
   );
+    const [audioAnalysisState, audioAnalysisAction] = useActionState(analyzeAudioFile, initialAudioAnalysisState);
+    const [imageAnalysisState, imageAnalysisAction] = useActionState(analyzeDiseaseFromImage, initialImageAnalysisState);
+    const [voiceAnalysisState, voiceAnalysisAction] = useActionState(analyzeVoiceTranscript, initialVoiceAnalysisState);
+
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
-  const [intent, setIntent] = useState<'symptom' | 'info' | null>(null);
+  const [intent, setIntent] = useState<'symptom' | 'info' | 'voice' | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isClient, setIsClient] = useState(false);
@@ -128,10 +151,10 @@ export function ChatInterface() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setIsClient(true);
-    // @ts-ignore
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
@@ -139,14 +162,44 @@ export function ChatInterface() {
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.lang = 'en-US';
-      recognition.onresult = (event) => {
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
         const transcript = event.results[0][0].transcript;
         if (inputRef.current) {
           inputRef.current.value = transcript;
         }
         setIsRecording(false);
+
+        const userMessage: DisplayMessage = {
+          id: crypto.randomUUID(),
+          role: 'user',
+          display: <ChatMessageContent content={<p>{transcript}</p>} />,
+          createdAt: new Date(),
+        };
+
+        const loadingMessage: DisplayMessage = {
+          id: 'loading',
+          role: 'assistant',
+          display: <ChatMessageContent content={<LoadingDots />} />,
+          createdAt: new Date(),
+        };
+
+        setMessages((prev) => [...prev, userMessage, loadingMessage]);
+
+        if (intent === 'voice') {
+            const formData = new FormData();
+            formData.set('transcript', transcript);
+            startTransition(() => voiceAnalysisAction(formData));
+        } else {
+            const formData = new FormData();
+            formData.set('intent', intent || '');
+            formData.set('message', transcript);
+            startTransition(() => messageAction(formData));
+        }
+        if (inputRef.current) {
+          inputRef.current.value = '';
+        }
       };
-      recognition.onerror = (event) => {
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error:', event.error);
         toast({
           variant: 'destructive',
@@ -160,7 +213,103 @@ export function ChatInterface() {
       };
       recognitionRef.current = recognition;
     }
-  }, [toast]);
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, [toast, intent]);
+
+  const handleVoiceAnalysisResult = (result: VoiceAnalysisAction) => {
+    if (!result.success || !result.data) {
+      setMessages((prev) =>
+        prev.slice(0, prev.length - 1).concat({
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          display: (
+            <ChatMessageContent
+              content={<p className="text-sm">{result.message || 'Failed to analyze voice.'}</p>}
+            />
+          ),
+          createdAt: new Date(),
+        })
+      );
+      return;
+    }
+
+    const data = result.data;
+    const displayNode = (
+      <Card>
+        <CardHeader>
+          <CardTitle>Vocal Symptom Analysis</CardTitle>
+          <CardDescription>
+            This is not a medical diagnosis. Consult a healthcare professional.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {data.isCoughDetected && <p>Cough detected.</p>}
+          {data.isBreathlessnessDetected && <p>Breathlessness detected.</p>}
+          {data.isFatigueDetected && <p>Fatigue detected.</p>}
+          {data.detectedSymptoms.length > 0 && <div><h3 className="font-semibold mb-2">Other Detected Symptoms</h3><p>{data.detectedSymptoms.join(', ')}</p></div>}
+        </CardContent>
+      </Card>
+    );
+
+    setMessages((prev) =>
+      prev.slice(0, prev.length - 1).concat({
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        display: <ChatMessageContent content={displayNode} />,
+        createdAt: new Date(),
+      })
+    );
+  }
+  
+    const handleAudioAnalysisResult = (result: AudioAnalysisAction) => {
+    if (!result.success || !result.data) {
+      setMessages((prev) =>
+        prev.slice(0, prev.length - 1).concat({
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          display: (
+            <ChatMessageContent
+              content={<p className="text-sm">{result.message || 'Failed to analyze audio.'}</p>}
+            />
+          ),
+          createdAt: new Date(),
+        })
+      );
+      return;
+    }
+
+    const data = result.data;
+    const displayNode = (
+      <Card>
+        <CardHeader>
+          <CardTitle>Audio Clip Analysis</CardTitle>
+          <CardDescription>
+            This is not a medical diagnosis. Consult a healthcare professional.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          {data.isCoughDetected && <p>Cough detected.</p>}
+          {data.isBreathlessnessDetected && <p>Breathlessness detected.</p>}
+          {data.isFatigueDetected && <p>Fatigue detected.</p>}
+          {data.detectedSymptoms.length > 0 && <div><h3 className="font-semibold mb-2">Other Detected Symptoms</h3><p>{data.detectedSymptoms.join(', ')}</p></div>}
+          {data.transcription && <div><h3 className="font-semibold mb-2">Transcription</h3><p>{data.transcription}</p></div>}
+        </CardContent>
+      </Card>
+    );
+
+    setMessages((prev) =>
+      prev.slice(0, prev.length - 1).concat({
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        display: <ChatMessageContent content={displayNode} />,
+        createdAt: new Date(),
+      })
+    );
+  }
 
   useEffect(() => {
     if (isClient) {
@@ -177,7 +326,7 @@ export function ChatInterface() {
                     insights into your symptoms or retrieve information on
                     health topics. How can I help you today?
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button
                       variant="outline"
                       onClick={() => handleIntentSelection('symptom')}
@@ -196,6 +345,18 @@ export function ChatInterface() {
                     >
                       <ImageIcon className="mr-2 h-4 w-4" /> Analyze Image
                     </Button>
+                     <Button
+                      variant="outline"
+                      onClick={() => handleIntentSelection('voice')}
+                    >
+                      <FileAudio className="mr-2 h-4 w-4" /> Analyze Voice
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => audioFileInputRef.current?.click()}
+                    >
+                      <Music className="mr-2 h-4 w-4" /> Analyze Audio Clip
+                    </Button>
                   </div>
                 </div>
               }
@@ -208,7 +369,7 @@ export function ChatInterface() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient, id]);
 
-  const handleIntentSelection = (selectedIntent: 'symptom' | 'info') => {
+  const handleIntentSelection = (selectedIntent: 'symptom' | 'info' | 'voice') => {
     setIntent(selectedIntent);
     const systemMessage: DisplayMessage = {
       id: crypto.randomUUID(),
@@ -219,6 +380,8 @@ export function ChatInterface() {
             <p className="text-center text-sm text-muted-foreground">
               {selectedIntent === 'symptom'
                 ? 'Please list your symptoms or use the microphone to speak.'
+                : selectedIntent === 'voice'
+                ? 'Please press the microphone button and speak about your symptoms.'
                 : 'What health topic are you interested in?'}
             </p>
           }
@@ -306,7 +469,25 @@ export function ChatInterface() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messageState, isClient]);
 
-  const handleFormSubmit = async (formData: FormData) => {
+  useEffect(() => {
+    if (audioAnalysisState.success) {
+        handleAudioAnalysisResult(audioAnalysisState);
+    }
+  }, [audioAnalysisState]);
+
+  useEffect(() => {
+    if (imageAnalysisState.success) {
+        handleImageAnalysisResult(imageAnalysisState);
+    }
+  }, [imageAnalysisState]);
+
+  useEffect(() => {
+    if (voiceAnalysisState.success) {
+        handleVoiceAnalysisResult(voiceAnalysisState);
+    }
+  }, [voiceAnalysisState]);
+
+  const handleFormSubmit = (formData: FormData) => {
     const messageContent = formData.get('message') as string;
     if (!messageContent.trim()) return;
 
@@ -325,7 +506,7 @@ export function ChatInterface() {
     };
 
     setMessages((prev) => [...prev, userMessage, loadingMessage]);
-    messageAction(formData);
+    startTransition(() => messageAction(formData));
     formRef.current?.reset();
   };
 
@@ -346,7 +527,7 @@ export function ChatInterface() {
     setIsRecording(!isRecording);
   };
   
-  const handleImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -375,20 +556,23 @@ export function ChatInterface() {
 
     setMessages((prev) => [...prev, userImageMessage, loadingMessage]);
 
-    try {
-      const formData = new FormData();
-      formData.set('image', file);
-      if (context) formData.set('context', context);
-      const res = await analyzeDiseaseFromImage(null as any, formData);
+    const formData = new FormData();
+    formData.set('image', file);
+    if (context) formData.set('context', context);
+    startTransition(() => imageAnalysisAction(formData));
 
-      if (!res.success || !res.data) {
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+      const handleImageAnalysisResult = (result: ImageDiseaseAnalysisAction) => {
+    if (!result.success || !result.data) {
         setMessages((prev) =>
           prev.slice(0, prev.length - 1).concat({
             id: crypto.randomUUID(),
             role: 'assistant',
             display: (
               <ChatMessageContent
-                content={<p className="text-sm">{res.message || 'Failed to analyze image.'}</p>}
+                content={<p className="text-sm">{result.message || 'Failed to analyze image.'}</p>}
               />
             ),
             createdAt: new Date(),
@@ -397,7 +581,7 @@ export function ChatInterface() {
         return;
       }
 
-      const data = res.data;
+      const data = result.data;
       const displayNode = (
         <Card>
           <CardHeader>
@@ -432,27 +616,45 @@ export function ChatInterface() {
           createdAt: new Date(),
         })
       );
-    } catch (err) {
-      console.error(err);
-      setMessages((prev) =>
-        prev.slice(0, prev.length - 1).concat({
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          display: (
-            <ChatMessageContent content={<p className="text-sm">Unexpected error. Try again.</p>} />
-          ),
-          createdAt: new Date(),
-        })
-      );
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+  }
+  
+    const handleAudioFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const localUrl = URL.createObjectURL(file);
+
+    const userAudioMessage: DisplayMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      display: (
+        <div className="space-y-2">
+          <audio controls src={localUrl} className="max-w-xs rounded" />
+        </div>
+      ),
+      createdAt: new Date(),
+    };
+
+    const loadingMessage: DisplayMessage = {
+      id: 'loading',
+      role: 'assistant',
+      display: <ChatMessageContent content={<LoadingDots />} />,
+      createdAt: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userAudioMessage, loadingMessage]);
+
+    const formData = new FormData();
+    formData.set('audio', file);
+    startTransition(() => audioAnalysisAction(formData));
+
+    if (audioFileInputRef.current) audioFileInputRef.current.value = '';
   };
   
   function SubmitButton() {
     const { pending } = useFormStatus();
     return (
-      <Button type="submit" size="icon" disabled={pending || !intent}>
+      <Button type="submit" size="icon" disabled={pending || !intent || intent === 'voice'}>
         {pending ? <LoadingDots /> : <Send />}
         <span className="sr-only">Send message</span>
       </Button>
@@ -536,6 +738,14 @@ export function ChatInterface() {
             className="hidden"
             onChange={handleImageSelected}
           />
+          <input
+            ref={audioFileInputRef}
+            type="file"
+            name="audio"
+            accept="audio/*"
+            className="hidden"
+            onChange={handleAudioFileSelected}
+          />
           <Input
             ref={inputRef}
             name="message"
@@ -544,10 +754,12 @@ export function ChatInterface() {
                 ? 'Choose an option above to start...'
                 : intent === 'symptom'
                 ? 'e.g., headache, fever, cough'
+                : intent === 'voice'
+                ? 'Click the mic to start recording'
                 : 'e.g., What is diabetes?'
             }
             autoComplete="off"
-            disabled={!intent}
+            disabled={!intent || intent === 'voice'}
           />
           <input type="hidden" name="intent" value={intent || ''} />
           <Button

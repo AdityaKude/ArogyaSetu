@@ -34,10 +34,10 @@ export async function analyzeImageDisease(
 
 const imageDiseaseAnalysisPrompt = ai.definePrompt({
 	name: 'imageDiseaseAnalysisPrompt',
-	input: {
+	inputSchema: z.object({
 		image: z.string(),
 		context: z.string().optional(),
-	},
+	}),
 	template: `You are a medical assistant analyzing a clinical image.
 SYSTEM INSTRUCTIONS:
 - Be cautious, clear, and non-diagnostic. Provide possibilities, not certainties.
@@ -72,7 +72,7 @@ Return the following sections:
 3) Recommended Actions (bulleted)
 4) Confidence (qualitative)`;
 		const { text } = await ai.generate({
-			model: googleAI.model('gemini-2.5-flash'),
+			model: googleAI.model('gemini-pro-latest'),
 			messages: [
 				{
 					role: 'user',
@@ -110,7 +110,3 @@ function extractSections(text: string): ImageDiseaseAnalysisOutput {
 	const confidence = get('Confidence') || 'Low to moderate confidence based on image quality and context provided.';
 	return { summary, possibleConditions, recommendedActions, confidence };
 }
-
-
-
-

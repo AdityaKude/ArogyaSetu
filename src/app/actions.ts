@@ -6,8 +6,9 @@ import { convertTextToSpeech } from '@/ai/flows/text-to-speech';
 import { twilioService } from '@/lib/twilio';
 import { z } from 'zod';
 import { analyzeImageDisease } from '@/ai/flows/image-disease-analysis';
-import type { ImageDiseaseAnalysisOutput } from '@/ai/flows/image-disease-analysis';
-import type { ActionResult, TextToSpeechAction, ImageDiseaseAnalysisAction } from '@/lib/types';
+import { analyzeVoice } from '@/ai/flows/voice-analysis';
+import { audioAnalysisFlow } from '@/ai/flows/audio-analysis';
+import type { ActionResult, TextToSpeechAction, ImageDiseaseAnalysisAction, VoiceAnalysisAction, AudioAnalysisAction } from '@/lib/types';
 
 const messageSchema = z.object({
   intent: z.enum(['symptom', 'info']),
@@ -80,6 +81,35 @@ export async function getAudioForText(
   }
 }
 
+const voiceAnalysisSchema = z.object({
+  transcript: z.string().min(1, 'Transcript is required.'),
+});
+
+export async function analyzeVoiceTranscript(
+  prevState: any,
+  formData: FormData
+): Promise<VoiceAnalysisAction> {
+  const validatedFields = voiceAnalysisSchema.safeParse({
+    transcript: formData.get('transcript'),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      message: validatedFields.error.issues[0].message || 'Invalid transcript provided.',
+    };
+  }
+
+  try {
+    const result = await analyzeVoice({ transcript: validatedFields.data.transcript });
+    return { success: true, data: result };
+  } catch (e) {
+    console.error('Voice analysis failed:', e);
+    return { success: false, message: 'Failed to analyze voice transcript. Please try again.' };
+  }
+}
+
+
 // Image disease analysis
 const imageAnalysisSchema = z.object({
   image: z.any(), // can be a File/Blob or data URL string
@@ -119,6 +149,44 @@ export async function analyzeDiseaseFromImage(
     return { success: false, message: 'Failed to analyze image. Try again.' };
   }
 }
+
+const audioAnalysisSchema = z.object({
+    audio: z.any(), // Can be a File/Blob or data URL string
+});
+
+export async function analyzeAudioFile(
+  prevState: any,
+  formData: FormData
+): Promise<AudioAnalysisAction> {
+  const rawAudio = formData.get('audio');
+  const validated = audioAnalysisSchema.safeParse({ audio: rawAudio });
+
+  if (!validated.success || !rawAudio) {
+    return { success: false, message: 'Please provide an audio file.' };
+  }
+
+  try {
+    let dataUrl: string | null = null;
+    if (typeof rawAudio === 'string') {
+      dataUrl = rawAudio;
+    } else if (typeof Blob !== 'undefined' && rawAudio instanceof Blob) {
+      const blob = rawAudio as Blob;
+      const arrayBuffer = await blob.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      const mime = blob.type || 'audio/webm';
+      dataUrl = `data:${mime};base64,${base64}`;
+    } else {
+      return { success: false, message: 'Unsupported audio input.' };
+    }
+
+    const result = await audioAnalysisFlow({ audio: dataUrl });
+    return { success: true, data: result };
+  } catch (e) {
+    console.error('Audio analysis failed:', e);
+    return { success: false, message: 'Failed to analyze audio. Please try again.' };
+  }
+}
+
 
 // Authentication schemas
 const userSignupSchema = z.object({
