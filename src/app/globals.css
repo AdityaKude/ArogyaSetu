@@ -2,9 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: 'Open Sans', sans-serif;
+@layer base {
+  :root {
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  body {
+    font-family: var(--font-body);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
 }
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
 
 @layer base {
   :root {

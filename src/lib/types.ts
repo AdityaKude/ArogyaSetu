@@ -1,5 +1,6 @@
 import type { SymptomAnalysisOutput } from '@/ai/flows/symptom-analysis';
 import type { HealthInfoOutput } from '@/ai/flows/health-information-retrieval';
+import type { ImageDiseaseAnalysisOutput } from '@/ai/flows/image-disease-analysis';
 
 export type ActionResult = {
   type: 'symptom_analysis' | 'health_info' | 'error' | null;
@@ -22,4 +23,10 @@ export type EmergencyContact = {
 export type TextToSpeechAction = {
     audio?: string;
     error?: string;
+};
+
+export type ImageDiseaseAnalysisAction = {
+    success: boolean;
+    data?: ImageDiseaseAnalysisOutput;
+    message?: string;
 };

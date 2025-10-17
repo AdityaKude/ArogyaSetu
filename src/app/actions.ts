@@ -5,7 +5,9 @@ import { getHealthInfo } from '@/ai/flows/health-information-retrieval';
 import { convertTextToSpeech } from '@/ai/flows/text-to-speech';
 import { twilioService } from '@/lib/twilio';
 import { z } from 'zod';
-import type { ActionResult, TextToSpeechAction } from '@/lib/types';
+import { analyzeImageDisease } from '@/ai/flows/image-disease-analysis';
+import type { ImageDiseaseAnalysisOutput } from '@/ai/flows/image-disease-analysis';
+import type { ActionResult, TextToSpeechAction, ImageDiseaseAnalysisAction } from '@/lib/types';
 
 const messageSchema = z.object({
   intent: z.enum(['symptom', 'info']),
@@ -75,6 +77,46 @@ export async function getAudioForText(
   } catch(e) {
     console.error(e);
     return { error: 'Failed to convert text to speech.' };
+  }
+}
+
+// Image disease analysis
+const imageAnalysisSchema = z.object({
+  image: z.any(), // can be a File/Blob or data URL string
+  context: z.string().optional(),
+});
+
+export async function analyzeDiseaseFromImage(
+  prevState: any,
+  formData: FormData
+): Promise<ImageDiseaseAnalysisAction> {
+  const rawImage = formData.get('image');
+  const context = (formData.get('context') as string) || undefined;
+
+  const validated = imageAnalysisSchema.safeParse({ image: rawImage, context });
+  if (!validated.success || !rawImage) {
+    return { success: false, message: 'Please provide an image.' };
+  }
+
+  try {
+    let dataUrl: string | null = null;
+    if (typeof rawImage === 'string') {
+      dataUrl = rawImage as string;
+    } else if (typeof Blob !== 'undefined' && rawImage instanceof Blob) {
+      const blob = rawImage as Blob;
+      const arrayBuffer = await blob.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      const mime = (blob as any).type || 'image/jpeg';
+      dataUrl = `data:${mime};base64,${base64}`;
+    } else {
+      return { success: false, message: 'Unsupported image input.' };
+    }
+
+    const result = await analyzeImageDisease({ image: dataUrl, context });
+    return { success: true, data: result };
+  } catch (e) {
+    console.error('Image analysis failed:', e);
+    return { success: false, message: 'Failed to analyze image. Try again.' };
   }
 }
 

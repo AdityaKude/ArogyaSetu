@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useId, useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { submitUserMessage, getAudioForText } from '@/app/actions';
+import { submitUserMessage, getAudioForText, analyzeDiseaseFromImage } from '@/app/actions';
 import type { ActionResult, DisplayMessage } from '@/lib/types';
 import type { SymptomAnalysisOutput } from '@/ai/flows/symptom-analysis';
 import type { HealthInfoOutput } from '@/ai/flows/health-information-retrieval';
@@ -27,6 +27,7 @@ import {
   Mic,
   Volume2,
   Waves,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { LoadingDots } from './icons';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -75,6 +76,8 @@ function PlayAudioButton({ text }: { text: string }) {
       setIsPending(false);
     }
   };
+  
+  
 
   return (
     <>
@@ -124,6 +127,7 @@ export function ChatInterface() {
   const [isRecording, setIsRecording] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -185,6 +189,12 @@ export function ChatInterface() {
                       onClick={() => handleIntentSelection('info')}
                     >
                       <FileQuestion className="mr-2 h-4 w-4" /> Get Health Info
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <ImageIcon className="mr-2 h-4 w-4" /> Analyze Image
                     </Button>
                   </div>
                 </div>
@@ -336,6 +346,109 @@ export function ChatInterface() {
     setIsRecording(!isRecording);
   };
   
+  const handleImageSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const localUrl = URL.createObjectURL(file);
+    const context = inputRef.current?.value || '';
+
+    const userImageMessage: DisplayMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      display: (
+        <div className="space-y-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={localUrl} alt="uploaded" className="max-w-xs rounded" />
+          {context && <p className="text-sm whitespace-pre-wrap">{context}</p>}
+        </div>
+      ),
+      createdAt: new Date(),
+    };
+
+    const loadingMessage: DisplayMessage = {
+      id: 'loading',
+      role: 'assistant',
+      display: <ChatMessageContent content={<LoadingDots />} />,
+      createdAt: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userImageMessage, loadingMessage]);
+
+    try {
+      const formData = new FormData();
+      formData.set('image', file);
+      if (context) formData.set('context', context);
+      const res = await analyzeDiseaseFromImage(null as any, formData);
+
+      if (!res.success || !res.data) {
+        setMessages((prev) =>
+          prev.slice(0, prev.length - 1).concat({
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            display: (
+              <ChatMessageContent
+                content={<p className="text-sm">{res.message || 'Failed to analyze image.'}</p>}
+              />
+            ),
+            createdAt: new Date(),
+          })
+        );
+        return;
+      }
+
+      const data = res.data;
+      const displayNode = (
+        <Card>
+          <CardHeader>
+            <CardTitle>Image Analysis</CardTitle>
+            <CardDescription>
+              This is not a medical diagnosis. Consult a healthcare professional.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div>
+              <h3 className="font-semibold mb-2">Summary</h3>
+              <p className="whitespace-pre-wrap text-sm">{data.summary}</p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">Possible Conditions</h3>
+              <p className="whitespace-pre-wrap text-sm">{data.possibleConditions}</p>
+            </div>
+            <div>
+              <h3 className="font-semibold mb-2">Recommended Actions</h3>
+              <p className="whitespace-pre-wrap text-sm">{data.recommendedActions}</p>
+            </div>
+            <p className="text-xs text-muted-foreground">Confidence: {data.confidence}</p>
+          </CardContent>
+        </Card>
+      );
+
+      setMessages((prev) =>
+        prev.slice(0, prev.length - 1).concat({
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          display: <ChatMessageContent content={displayNode} />,
+          createdAt: new Date(),
+        })
+      );
+    } catch (err) {
+      console.error(err);
+      setMessages((prev) =>
+        prev.slice(0, prev.length - 1).concat({
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          display: (
+            <ChatMessageContent content={<p className="text-sm">Unexpected error. Try again.</p>} />
+          ),
+          createdAt: new Date(),
+        })
+      );
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+  
   function SubmitButton() {
     const { pending } = useFormStatus();
     return (
@@ -415,6 +528,14 @@ export function ChatInterface() {
           action={handleFormSubmit}
           className="flex items-center gap-2"
         >
+          <input
+            ref={fileInputRef}
+            type="file"
+            name="image"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageSelected}
+          />
           <Input
             ref={inputRef}
             name="message"
@@ -440,6 +561,15 @@ export function ChatInterface() {
             <span className="sr-only">
               {isRecording ? 'Stop recording' : 'Start recording'}
             </span>
+          </Button>
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <ImageIcon />
+            <span className="sr-only">Upload image</span>
           </Button>
           <SubmitButton />
         </form>

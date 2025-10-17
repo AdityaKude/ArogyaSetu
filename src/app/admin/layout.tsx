@@ -93,7 +93,7 @@ export default function AdminLayout({
               <CardHeader className="p-2 pt-0 md:p-4">
                 <CardTitle>SIH 2025</CardTitle>
                 <CardDescription>
-                  This project is built for the Smart India Hackathon.
+                  This is built for healthier Society.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-2 pt-0 md:p-4 md:pt-0">
