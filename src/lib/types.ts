@@ -40,3 +40,13 @@ export type AudioAnalysisAction = {
   message?: string;
   data?: AudioAnalysisOutput;
 };
+
+export type SignLanguageFlowAction = {
+    success: boolean;
+    message?: string;
+    data?: {
+        translatedText: string;
+        responseText: string;
+        responseVideo: string;
+    };
+};

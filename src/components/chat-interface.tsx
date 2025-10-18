@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, useId, useActionState, useTransition } from 'react';
 import { useFormStatus } from 'react-dom';
-import { submitUserMessage, getAudioForText, analyzeDiseaseFromImage, analyzeVoiceTranscript, analyzeAudioFile } from '@/app/actions';
-import type { ActionResult, DisplayMessage, VoiceAnalysisAction, AudioAnalysisAction, ImageDiseaseAnalysisAction } from '@/lib/types';
+import { submitUserMessage, getAudioForText, analyzeDiseaseFromImage, analyzeVoiceTranscript, analyzeAudioFile, processSignLanguageMessage } from '@/app/actions';
+import type { ActionResult, DisplayMessage, VoiceAnalysisAction, AudioAnalysisAction, ImageDiseaseAnalysisAction, SignLanguageFlowAction } from '@/lib/types';
 import type { SymptomAnalysisOutput } from '@/ai/flows/symptom-analysis';
 import type { HealthInfoOutput } from '@/ai/flows/health-information-retrieval';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +29,8 @@ import {
   Waves,
   Image as ImageIcon,
   FileAudio,
-  Music
+  Music,
+  Video
 } from 'lucide-react';
 import { LoadingDots } from './icons';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -52,6 +53,11 @@ const initialImageAnalysisState: ImageDiseaseAnalysisAction = {
 }
 
 const initialVoiceAnalysisState: VoiceAnalysisAction = {
+    success: false,
+    message: '',
+}
+
+const initialSignLanguageState: SignLanguageFlowAction = {
     success: false,
     message: '',
 }
@@ -139,9 +145,10 @@ export function ChatInterface() {
     const [audioAnalysisState, audioAnalysisAction] = useActionState(analyzeAudioFile, initialAudioAnalysisState);
     const [imageAnalysisState, imageAnalysisAction] = useActionState(analyzeDiseaseFromImage, initialImageAnalysisState);
     const [voiceAnalysisState, voiceAnalysisAction] = useActionState(analyzeVoiceTranscript, initialVoiceAnalysisState);
+    const [signLanguageState, signLanguageAction] = useActionState(processSignLanguageMessage, initialSignLanguageState);
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
-  const [intent, setIntent] = useState<'symptom' | 'info' | 'voice' | null>(null);
+  const [intent, setIntent] = useState<'symptom' | 'info' | 'voice' | 'sign-language' | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isClient, setIsClient] = useState(false);
@@ -152,6 +159,7 @@ export function ChatInterface() {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioFileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -357,6 +365,12 @@ export function ChatInterface() {
                     >
                       <Music className="mr-2 h-4 w-4" /> Analyze Audio Clip
                     </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => handleIntentSelection('sign-language')}
+                    >
+                        <Video className="mr-2 h-4 w-4" /> Sign Language
+                    </Button>
                   </div>
                 </div>
               }
@@ -369,7 +383,7 @@ export function ChatInterface() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isClient, id]);
 
-  const handleIntentSelection = (selectedIntent: 'symptom' | 'info' | 'voice') => {
+  const handleIntentSelection = (selectedIntent: 'symptom' | 'info' | 'voice' | 'sign-language') => {
     setIntent(selectedIntent);
     const systemMessage: DisplayMessage = {
       id: crypto.randomUUID(),
@@ -382,6 +396,8 @@ export function ChatInterface() {
                 ? 'Please list your symptoms or use the microphone to speak.'
                 : selectedIntent === 'voice'
                 ? 'Please press the microphone button and speak about your symptoms.'
+                : selectedIntent === 'sign-language'
+                ? 'Click the video icon to start recording your signs.'
                 : 'What health topic are you interested in?'}
             </p>
           }
@@ -486,6 +502,12 @@ export function ChatInterface() {
         handleVoiceAnalysisResult(voiceAnalysisState);
     }
   }, [voiceAnalysisState]);
+
+  useEffect(() => {
+    if (signLanguageState.success) {
+        handleSignLanguageResult(signLanguageState);
+    }
+    }, [signLanguageState]);
 
   const handleFormSubmit = (formData: FormData) => {
     const messageContent = formData.get('message') as string;
@@ -650,11 +672,88 @@ export function ChatInterface() {
 
     if (audioFileInputRef.current) audioFileInputRef.current.value = '';
   };
+
+  const handleVideoSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const localUrl = URL.createObjectURL(file);
+
+    const userVideoMessage: DisplayMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        display: (
+            <div className="space-y-2">
+                <video src={localUrl} controls className="max-w-xs rounded" />
+            </div>
+        ),
+        createdAt: new Date(),
+    };
+
+    const loadingMessage: DisplayMessage = {
+        id: 'loading',
+        role: 'assistant',
+        display: <ChatMessageContent content={<LoadingDots />} />,
+        createdAt: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userVideoMessage, loadingMessage]);
+
+    const formData = new FormData();
+    formData.set('video', file);
+    startTransition(() => signLanguageAction(formData));
+
+    if (videoInputRef.current) videoInputRef.current.value = '';
+  };
+
+  const handleSignLanguageResult = (result: SignLanguageFlowAction) => {
+    if (!result.success || !result.data) {
+        setMessages((prev) =>
+            prev.slice(0, prev.length - 1).concat({
+                id: crypto.randomUUID(),
+                role: 'assistant',
+                display: (
+                    <ChatMessageContent
+                        content={<p className="text-sm">{result.message || 'Failed to process sign language video.'}</p>}
+                    />
+                ),
+                createdAt: new Date(),
+            })
+        );
+        return;
+    }
+
+    const data = result.data;
+    const displayNode = (
+        <Card>
+            <CardHeader>
+                <CardTitle>Sign Language Response</CardTitle>
+                <CardDescription>
+                    Translated text: {data.translatedText}
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+                <video src={data.responseVideo} controls className="max-w-xs rounded" />
+                <p>{data.responseText}</p>
+            </CardContent>
+        </Card>
+    );
+
+    setMessages((prev) =>
+        prev.slice(0, prev.length - 1).concat({
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            display: <ChatMessageContent content={displayNode} />,
+            createdAt: new Date(),
+        })
+    );
+    setIntent(null);
+  }
   
   function SubmitButton() {
     const { pending } = useFormStatus();
     return (
-      <Button type="submit" size="icon" disabled={pending || !intent || intent === 'voice'}>
+      <Button type="submit" size="icon" disabled={pending || !intent || intent === 'voice' || intent === 'sign-language'}>
         {pending ? <LoadingDots /> : <Send />}
         <span className="sr-only">Send message</span>
       </Button>
@@ -746,6 +845,15 @@ export function ChatInterface() {
             className="hidden"
             onChange={handleAudioFileSelected}
           />
+          <input
+            ref={videoInputRef}
+            type="file"
+            name="video"
+            accept="video/*"
+            capture="user"
+            className="hidden"
+            onChange={handleVideoSelected}
+          />
           <Input
             ref={inputRef}
             name="message"
@@ -756,10 +864,12 @@ export function ChatInterface() {
                 ? 'e.g., headache, fever, cough'
                 : intent === 'voice'
                 ? 'Click the mic to start recording'
+                : intent === 'sign-language'
+                ? 'Click the video icon to start recording'
                 : 'e.g., What is diabetes?'
             }
             autoComplete="off"
-            disabled={!intent || intent === 'voice'}
+            disabled={!intent || intent === 'voice' || intent === 'sign-language'}
           />
           <input type="hidden" name="intent" value={intent || ''} />
           <Button
@@ -767,7 +877,7 @@ export function ChatInterface() {
             size="icon"
             variant={isRecording ? 'destructive' : 'outline'}
             onClick={toggleRecording}
-            disabled={!intent}
+            disabled={!intent || intent === 'sign-language'}
           >
             {isRecording ? <Waves /> : <Mic />}
             <span className="sr-only">
@@ -778,10 +888,11 @@ export function ChatInterface() {
             type="button"
             size="icon"
             variant="outline"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => videoInputRef.current?.click()}
+            disabled={!intent || intent !== 'sign-language'}
           >
-            <ImageIcon />
-            <span className="sr-only">Upload image</span>
+            <Video />
+            <span className="sr-only">Upload video</span>
           </Button>
           <SubmitButton />
         </form>
