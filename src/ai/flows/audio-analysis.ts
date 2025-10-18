@@ -22,6 +22,7 @@ const AudioAnalysisOutputSchema = z.object({
   isBreathlessnessDetected: z.boolean().describe('True if signs of breathlessness or heavy breathing are detected.'),
   isFatigueDetected: z.boolean().describe('True if the user sounds fatigued or mentions tiredness.'),
   detectedSymptoms: z.array(z.string()).describe('A list of specific symptoms detected from the audio analysis.'),
+  diagnosis: z.string().describe('A brief diagnosis or a list of possible conditions based on the detected symptoms. This should not be considered a medical opinion.'),
   transcription: z.string().optional().describe('A transcription of the speech in the audio.'),
 });
 export type AudioAnalysisOutput = z.infer<typeof AudioAnalysisOutputSchema>;
@@ -46,7 +47,8 @@ Based on the audio, determine the following in JSON format:
 2.  isBreathlessnessDetected: Are there signs of difficulty breathing, gasping, or shortness of breath?
 3.  isFatigueDetected: Does the speaker's voice indicate fatigue?
 4.  detectedSymptoms: List any other specific symptoms you can infer from the audio.
-5.  transcription: Transcribe the speech from the audio, if any.
+5.  diagnosis: Based on the detected symptoms, provide a brief summary of possible conditions. Preface this with a disclaimer that this is not a real medical diagnosis.
+6.  transcription: Transcribe the speech from the audio, if any.
 `},
         { media: { url: input.audio } },
       ],

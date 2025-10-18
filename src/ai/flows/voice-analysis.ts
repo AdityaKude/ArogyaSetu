@@ -1,11 +1,10 @@
 'use server';
 
 /**
- * @fileOverview Analyzes transcribed speech to detect health-related acoustic cues.
+ * @fileOverview Analyzes transcribed speech to detect health-related acoustic cues and provide a potential diagnosis.
  *
- * This flow does not analyze raw audio but instead interprets transcribed text
- * to identify vocal symptoms like coughing, shortness of breath, or fatigue.
- * It serves as a proxy for a full acoustic analysis model.
+ * This flow interprets transcribed text to identify vocal symptoms and then suggests
+ * possible conditions based on those symptoms. It serves as a proxy for a full acoustic analysis model.
  */
 
 import { ai } from '@/ai/genkit';
@@ -21,6 +20,7 @@ const VoiceAnalysisOutputSchema = z.object({
   isBreathlessnessDetected: z.boolean().describe('True if signs of breathlessness or heavy breathing are detected.'),
   isFatigueDetected: z.boolean().describe('True if the user sounds fatigued or mentions tiredness.'),
   detectedSymptoms: z.array(z.string()).describe('A list of specific symptoms detected from the voice analysis.'),
+  diagnosis: z.string().describe('A brief diagnosis or a list of possible conditions based on the detected symptoms. This should not be considered a medical opinion.'),
 });
 export type VoiceAnalysisOutput = z.infer<typeof VoiceAnalysisOutputSchema>;
 
@@ -33,7 +33,7 @@ const voiceAnalysisPrompt = ai.definePrompt({
   input: { schema: VoiceAnalysisInputSchema },
   output: { schema: VoiceAnalysisOutputSchema },
   prompt: `You are an expert medical assistant specializing in acoustic analysis.
-You will receive a text transcript of a user's speech. Your task is to analyze this text to infer potential health-related acoustic cues.
+You will receive a text transcript of a user\'s speech. Your task is to analyze this text to infer potential health-related acoustic cues and provide a brief diagnosis.
 
 Look for explicit mentions of symptoms (e.g., "I have a cough") and para-linguistic cues transcribed as text (e.g., "[cough]", "[gasp]", "[sigh]").
 
@@ -42,6 +42,7 @@ Based on the transcript, determine the following:
 2.  isBreathlessnessDetected: Are there signs of difficulty breathing, gasping, or shortness of breath?
 3.  isFatigueDetected: Does the user mention being tired, or are there long pauses or sighs that might indicate fatigue?
 4.  detectedSymptoms: List any other specific symptoms you can infer from the text.
+5.  diagnosis: Based on the detected symptoms, provide a brief summary of possible conditions. Preface this with a disclaimer that this is not a real medical diagnosis.
 
 Transcript: {{{transcript}}}
 `,

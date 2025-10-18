@@ -259,6 +259,7 @@ export function ChatInterface() {
           {data.isBreathlessnessDetected && <p>Breathlessness detected.</p>}
           {data.isFatigueDetected && <p>Fatigue detected.</p>}
           {data.detectedSymptoms.length > 0 && <div><h3 className="font-semibold mb-2">Other Detected Symptoms</h3><p>{data.detectedSymptoms.join(', ')}</p></div>}
+		      {data.diagnosis && <div><h3 className="font-semibold mb-2">Diagnosis</h3><p>{data.diagnosis}</p></div>}          
         </CardContent>
       </Card>
     );
@@ -304,6 +305,7 @@ export function ChatInterface() {
           {data.isBreathlessnessDetected && <p>Breathlessness detected.</p>}
           {data.isFatigueDetected && <p>Fatigue detected.</p>}
           {data.detectedSymptoms.length > 0 && <div><h3 className="font-semibold mb-2">Other Detected Symptoms</h3><p>{data.detectedSymptoms.join(', ')}</p></div>}
+          {data.diagnosis && <div><h3 className="font-semibold mb-2">Diagnosis</h3><p>{data.diagnosis}</p></div>}
           {data.transcription && <div><h3 className="font-semibold mb-2">Transcription</h3><p>{data.transcription}</p></div>}
         </CardContent>
       </Card>
