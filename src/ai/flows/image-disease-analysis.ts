@@ -1,29 +1,21 @@
 
 'use server';
 
-/**
- * @fileOverview Analyze an image to identify potential diseases or conditions.
- * Uses multimodal Gemini to describe notable medical findings and likely conditions.
- * Returns a concise diagnosis summary, confidence, and recommendations.
- */
-
 import { ai } from '@/ai/genkit';
 import { googleAI } from '@genkit-ai/googleai';
 import { z } from 'genkit';
 
 const ImageDiseaseAnalysisInputSchema = z.object({
-	/** Data URL string (e.g., data:image/png;base64,...) or external URL */
 	image: z.string().min(10, 'Image is required.'),
-	/** Optional: anatomical site or context provided by user */
 	context: z.string().nullable().optional(),
 });
 export type ImageDiseaseAnalysisInput = z.infer<typeof ImageDiseaseAnalysisInputSchema>;
 
 const ImageDiseaseAnalysisOutputSchema = z.object({
-	summary: z.string().describe('High-level summary of findings'),
-	possibleConditions: z.string().describe('Likely conditions ranked or listed'),
-	recommendedActions: z.string().describe('Next steps and care guidance'),
-	confidence: z.string().describe('Model confidence description, not a medical guarantee'),
+	summary: z.string(),
+	possibleConditions: z.string(),
+	recommendedActions: z.string(),
+	confidence: z.string(),
 });
 export type ImageDiseaseAnalysisOutput = z.infer<typeof ImageDiseaseAnalysisOutputSchema>;
 
@@ -33,28 +25,6 @@ export async function analyzeImageDisease(
 	return imageDiseaseAnalysisFlow(input);
 }
 
-const imageDiseaseAnalysisPrompt = ai.definePrompt({
-	name: 'imageDiseaseAnalysisPrompt',
-	inputSchema: z.object({
-		image: z.string(),
-		context: z.string().optional(),
-	}),
-	template: `You are a medical assistant analyzing a clinical image.
-SYSTEM INSTRUCTIONS:
-- Be cautious, clear, and non-diagnostic. Provide possibilities, not certainties.
-- If the image is non-medical or low quality, say so and ask for a clearer image.
-- Use accessible language suitable for the public.
-
-USER CONTEXT (may be empty): {{context}}
-
-TASK:
-1) Brief Summary of Visible Findings
-2) Possible Conditions (bulleted)
-3) Recommended Actions (bulleted)
-4) Confidence (qualitative)
-`,
-});
-
 const imageDiseaseAnalysisFlow = ai.defineFlow(
 	{
 		name: 'imageDiseaseAnalysisFlow',
@@ -62,18 +32,28 @@ const imageDiseaseAnalysisFlow = ai.defineFlow(
 		outputSchema: ImageDiseaseAnalysisOutputSchema,
 	},
 	async ({ image, context }) => {
-    const promptText = `You are a cautious medical assistant analyzing a clinical image.
-Provide possibilities, not certainties. If the image is non-medical or unclear, say so.
 
-Context: ${context || 'N/A'}
+    const promptText = `You are a medical assistant AI analyzing an image for a user on a messaging app. Your responses MUST be brief and easy to read on a small screen.
 
-Return the following sections:
-1) Summary of Visible Findings
-2) Possible Conditions (bulleted)
-3) Recommended Actions (bulleted)
-4) Confidence (qualitative)`;
+**CRITICAL INSTRUCTIONS:**
+- **BE CONCISE.** Use short sentences.
+- **DO NOT** use more than 3 bullet points per section.
+- **DO NOT** write long paragraphs.
+
+Context from user: ${context || 'N/A'}
+
+Analyze the image and provide the following information in this exact format:
+
+1) Summary: [MAX 2 sentences describing the key visual signs.]
+
+2) Possible Conditions: [MAX 3 bullet points of likely conditions. Be non-diagnostic.]
+
+3) Recommended Actions: [MAX 3 bullet points for next steps.]
+
+4) Confidence: [One phrase: "Very Low", "Low", "Moderate", "High", or "Very High".]`;
+
 		const { text } = await ai.generate({
-			model: googleAI.model('gemini-2.5-flash'),
+			model: googleAI.model('gemini-pro-latest'),
 			messages: [
 				{
 					role: 'user',
@@ -94,20 +74,41 @@ function inferMimeTypeFromDataUrl(dataUrl: string): string {
 	if (dataUrl.startsWith('data:image/png')) return 'image/png';
 	if (dataUrl.startsWith('data:image/jpeg') || dataUrl.startsWith('data:image/jpg')) return 'image/jpeg';
 	if (dataUrl.startsWith('data:image/webp')) return 'image/webp';
-	// Fallback
 	return 'image/*';
 }
 
+// **Improved Parsing Logic:** This function is now more robust and less sensitive to formatting changes.
 function extractSections(text: string): ImageDiseaseAnalysisOutput {
-	// Very simple parsing based on headings; fallback to entire text as summary
-	const get = (label: string) => {
-		const regex = new RegExp(`${label}[:\\n]+([\\s\\S]*?)(?:\\n\\n|$)`, 'i');
-		const m = text.match(regex);
-		return m ? m[1].trim() : '';
-	};
-	const summary = get('Summary') || text.trim().slice(0, 600);
-	const possibleConditions = get('Possible Conditions') || 'Not enough information to reliably suggest conditions.';
-	const recommendedActions = get('Recommended Actions') || 'Consider consulting a qualified healthcare professional for further evaluation.';
-	const confidence = get('Confidence') || 'Low to moderate confidence based on image quality and context provided.';
-	return { summary, possibleConditions, recommendedActions, confidence };
+  const sections = {
+    summary: '',
+    possibleConditions: '',
+    recommendedActions: '',
+    confidence: '',
+  };
+
+  // Split the text by the numbered headings (e.g., "1)", "2)").
+  const parts = text.split(/\n?\d+\)/).filter(part => part.trim() !== '');
+
+  if (parts.length > 0) {
+    // The first part after the split contains the summary.
+    const summaryPart = parts[0].split('Summary:');
+    if (summaryPart.length > 1) sections.summary = summaryPart[1].trim();
+  }
+  if (parts.length > 1) {
+    // The second part contains the possible conditions.
+    const conditionsPart = parts[1].split('Possible Conditions:');
+    if (conditionsPart.length > 1) sections.possibleConditions = conditionsPart[1].trim();
+  }
+  if (parts.length > 2) {
+    // The third part contains the recommended actions.
+    const actionsPart = parts[2].split('Recommended Actions:');
+    if (actionsPart.length > 1) sections.recommendedActions = actionsPart[1].trim();
+  }
+  if (parts.length > 3) {
+    // The fourth part contains the confidence.
+    const confidencePart = parts[3].split('Confidence:');
+    if (confidencePart.length > 1) sections.confidence = confidencePart[1].trim();
+  }
+
+  return sections;
 }

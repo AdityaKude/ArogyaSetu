@@ -1,39 +1,62 @@
 'use server';
 
-/**
- * @fileOverview Webhook for handling incoming messages from various platforms (WhatsApp, SMS, etc.).
- *
- * This flow is designed to be triggered by a webhook from a service like Twilio.
- * It processes the incoming message, routes it to the appropriate AI flow,
- * and prepares a response to be sent back to the user.
- *
- * - messagingWebhook - The main flow function.
- * - MessagingWebhookInput - The input type, mimicking a payload from a messaging provider.
- * - MessagingWebhookOutput - The output type, formatted for a messaging provider.
- */
-
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { analyzeSymptoms } from './symptom-analysis';
 import { getHealthInfo } from './health-information-retrieval';
 
-// Simplified schema based on what a provider like Twilio might send for SMS or WhatsApp.
+// --- Schema Definitions ---
+
 const MessagingWebhookInputSchema = z.object({
-  From: z.string().describe('The phone number or identifier that sent the message (e.g., +14155238886).'),
-  Body: z.string().describe('The text of the incoming message.'),
+  From: z.string().describe('The identifier (e.g., phone number) of the sender.'),
+  Body: z.string().describe('The text content of the incoming message.'),
 });
 export type MessagingWebhookInput = z.infer<typeof MessagingWebhookInputSchema>;
 
 const MessagingWebhookOutputSchema = z.object({
-    body: z.string().describe('The text of the message to send back to the user.'),
+  body: z.string().describe('The text of the message to send back to the user.'),
 });
 export type MessagingWebhookOutput = z.infer<typeof MessagingWebhookOutputSchema>;
 
+const MessageRouteSchema = z.enum([
+  'symptom_analysis',
+  'health_info',
+  'unrelated',
+]);
+
+// --- AI-Powered Message Routing ---
+
+const routeMessage = ai.defineFlow(
+  {
+    name: 'routeMessage',
+    inputSchema: z.object({ message: z.string() }),
+    outputSchema: MessageRouteSchema,
+  },
+  async ({ message }) => {
+    const { text: result } = await ai.generate({
+      model: 'gemini-1.5-flash',
+      prompt: `You are an intelligent message router for a healthcare chatbot.
+      Analyze the user's message and classify it into one of the following categories:
+      - 'symptom_analysis': If the user is describing their own symptoms or how they feel (e.g., "I have a headache," "I feel sick").
+      - 'health_info': If the user is asking a general question about a medical condition, treatment, or health topic (e.g., "What are the symptoms of diabetes?", "How to treat a cold?").
+      - 'unrelated': If the message is a greeting, thank you, or not related to health.
+
+      Message: "${message}"
+
+      Classification:`,
+      output: { schema: MessageRouteSchema },
+      config: { temperature: 0 }, // Use low temperature for consistent classification
+    });
+    return result || 'unrelated';
+  }
+);
+
+
+// --- Main Webhook Flow ---
 
 export async function messagingWebhook(input: MessagingWebhookInput): Promise<MessagingWebhookOutput> {
-    return messagingWebhookFlow(input);
+  return messagingWebhookFlow(input);
 }
-
 
 const messagingWebhookFlow = ai.defineFlow(
   {
@@ -42,24 +65,28 @@ const messagingWebhookFlow = ai.defineFlow(
     outputSchema: MessagingWebhookOutputSchema,
   },
   async (input) => {
-    const userMessage = input.Body.toLowerCase();
+    const route = await routeMessage({ message: input.Body });
     let responseText: string;
 
-    // Simple intent detection based on keywords.
-    // A more advanced implementation could use an AI prompt for classification.
-    if (userMessage.includes('symptom') || userMessage.includes('feel')) {
-      const result = await analyzeSymptoms({ symptoms: input.Body });
-      responseText = `🔍 Symptom Analysis:\n\nPossible Conditions: ${result.possibleConditions}\n\nRecommended Actions: ${result.recommendedActions}\n\n⚠️ Disclaimer: This is not a medical diagnosis. Please consult a healthcare professional.`;
+    console.log(`Routing message from ${input.From} to: ${route}`);
+
+    if (route === 'symptom_analysis') {
+      const symptomResult = await analyzeSymptoms({ symptoms: input.Body });
+      responseText = `*Symptom Analysis*\n\n` +
+        `*Possible Conditions:* ${symptomResult.possibleConditions}\n\n` +
+        `*Recommended Actions:* ${symptomResult.recommendedActions}\n\n` +
+        `_This is not a medical diagnosis. Please consult a professional._`;
+    } else if (route === 'health_info') {
+      const healthInfoResult = await getHealthInfo({ topic: input.Body });
+      responseText = `*Health Information*\n\n` +
+        `${healthInfoResult.summary}\n\n` +
+        `_This is general information. Always consult a healthcare professional for medical advice._`;
     } else {
-      const result = await getHealthInfo({ query: input.Body });
-      responseText = `🏥 Health Information:\n\n${result.summary}\n\n⚠️ Disclaimer: This is general health information. Please consult a healthcare professional for medical advice.`;
+      responseText = "I can help with health-related questions. For example, you can ask me about a specific medical condition or describe your symptoms. Please be aware that I am an AI assistant and not a medical professional.";
     }
     
-    // Note: Response will be sent via the webhook route
     console.log('Generated response for:', input.From, responseText);
     
-    return {
-      body: responseText,
-    };
+    return { body: responseText };
   }
 );
