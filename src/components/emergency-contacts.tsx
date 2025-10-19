@@ -1,13 +1,13 @@
 'use client';
 
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
   Ambulance,
@@ -42,20 +42,20 @@ const getIcon = (type: EmergencyContact['type']) => {
 
 export function EmergencyContacts() {
   return (
-    <Sheet>
-      <SheetTrigger asChild>
+    <Dialog>
+      <DialogTrigger asChild>
         <Button variant="destructive" size="sm">
           <HeartPulse className="mr-2 h-4 w-4" />
           Emergency
         </Button>
-      </SheetTrigger>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>Emergency Contacts</SheetTitle>
-          <SheetDescription>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Emergency Contacts</DialogTitle>
+          <DialogDescription>
             In case of an emergency, please use the following contact numbers.
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
         <div className="grid gap-4 py-4">
           {contacts.map((contact) => (
             <div
@@ -75,7 +75,7 @@ export function EmergencyContacts() {
             </div>
           ))}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }

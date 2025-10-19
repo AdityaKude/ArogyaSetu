@@ -2,10 +2,11 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { gemini15Flash } from '@genkit-ai/googleai';
+import { googleAI } from '@genkit-ai/googleai';
 
 // Define the model to be used for analysis
-const model = gemini15Flash;
+const model = googleAI.model('gemini-pro-latest');
+
 
 // Define the input schema for the sign language analysis flow
 const SignLanguageInputSchema = z.object({
@@ -32,18 +33,17 @@ export const signLanguageAnalysisFlow = ai.defineFlow(
       model,
       prompt: [
         {
-          text: `You are an expert in Indian Sign Language (ISL).
-You will receive a video of a person signing.
-Your task is to analyze the video, translate the signs into a coherent English sentence, and determine the user's intent.
-The user's intent will be either 'symptom' (if they are describing a health issue) or 'info' (if they are asking a question).
-
-Analyze the video provided and return the translated text and the determined intent.
-`,
+          text: `You are an expert in Indian Sign Language (ISL).\n You will receive a video of a person signing.\n Your task is to analyze the video, translate the signs into a coherent English sentence, and determine the user's intent.\n The user's intent will be either 'symptom' (if they are describing a health issue) or 'info' (if they are asking a question).\n\n Analyze the video provided and return the translated text and the determined intent.\n`,
         },
         { media: { url: input.video } },
       ],
       output: { schema: SignLanguageOutputSchema },
     });
+
+    if (!output) {
+      throw new Error('Failed to analyze sign language video.');
+    }
+
     return output;
   }
 );

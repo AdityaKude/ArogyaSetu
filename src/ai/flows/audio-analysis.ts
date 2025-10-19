@@ -38,18 +38,7 @@ export const audioAnalysisFlow = ai.defineFlow(
     const { output } = await ai.generate({
       model,
       prompt: [
-        { text: `You are an expert medical assistant specializing in acoustic analysis.
-You will receive an audio clip. Your task is to analyze this audio to identify potential health-related acoustic cues.
-Listen for sounds like coughing, wheezing, gasping, or signs of a strained or weak voice.
-
-Based on the audio, determine the following in JSON format:
-1.  isCoughDetected: Is there any sound of coughing?
-2.  isBreathlessnessDetected: Are there signs of difficulty breathing, gasping, or shortness of breath?
-3.  isFatigueDetected: Does the speaker's voice indicate fatigue?
-4.  detectedSymptoms: List any other specific symptoms you can infer from the audio.
-5.  diagnosis: Based on the detected symptoms, provide a brief summary of possible conditions. Preface this with a disclaimer that this is not a real medical diagnosis.
-6.  transcription: Transcribe the speech from the audio, if any.
-`},
+        { text: `You are an expert medical assistant specializing in acoustic analysis.\nYou will receive an audio clip. Your task is to analyze this audio to identify potential health-related acoustic cues.\nListen for sounds like coughing, wheezing, gasping, or signs of a strained or weak voice.\n\nBased on the audio, determine the following in JSON format:\n1.  isCoughDetected: Is there any sound of coughing?\n2.  isBreathlessnessDetected: Are there signs of difficulty breathing, gasping, or shortness of breath?\n3.  isFatigueDetected: Does the speaker's voice indicate fatigue?\n4.  detectedSymptoms: List any other specific symptoms you can infer from the audio.\n5.  diagnosis: Based on the detected symptoms, provide a brief summary of possible conditions. Preface this with a disclaimer that this is not a real medical diagnosis.\n6.  transcription: Transcribe the speech from the audio, if any.\n`},
         { media: { url: input.audio } },
       ],
       output: { schema: AudioAnalysisOutputSchema },

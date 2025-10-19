@@ -2,16 +2,17 @@
 /**
  * @fileOverview Retrieves summaries and key information about diseases and health topics.
  *
- * - getHealthInfo - A function that takes a query and returns health information.
+ * - getHealthInfo - A function that takes a topic and returns health information.
  * - HealthInfoInput - The input type for the getHealthInfo function.
  * - HealthInfoOutput - The return type for the getHealthInfo function.
  */
 
 import {ai} from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const HealthInfoInputSchema = z.object({
-  query: z.string().describe('The user query about a disease or health topic.'),
+  topic: z.string().describe('The user query about a disease or health topic.'),
 });
 export type HealthInfoInput = z.infer<typeof HealthInfoInputSchema>;
 
@@ -24,17 +25,6 @@ export async function getHealthInfo(input: HealthInfoInput): Promise<HealthInfoO
   return healthInfoFlow(input);
 }
 
-const healthInfoPrompt = ai.definePrompt({
-  name: 'healthInfoPrompt',
-  input: {schema: HealthInfoInputSchema},
-  output: {schema: HealthInfoOutputSchema},
-  prompt: `You are a helpful AI assistant providing health information.
-  Summarize the following query about a disease or health topic and provide key information:
-
-  Query: {{{query}}}
-  `,
-});
-
 const healthInfoFlow = ai.defineFlow(
   {
     name: 'healthInfoFlow',
@@ -42,7 +32,11 @@ const healthInfoFlow = ai.defineFlow(
     outputSchema: HealthInfoOutputSchema,
   },
   async input => {
-    const {output} = await healthInfoPrompt(input);
+    const {output} = await ai.generate({
+      model: googleAI.model('gemini-pro-latest'),
+      prompt: `You are a helpful AI assistant providing health information.\n  Summarize the following topic about a disease or health topic and provide key information:\n\n  Topic: ${input.topic}\n  `,
+      output: { schema: HealthInfoOutputSchema },
+    });
     return output!;
   }
 );

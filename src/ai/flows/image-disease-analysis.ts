@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -14,7 +15,7 @@ const ImageDiseaseAnalysisInputSchema = z.object({
 	/** Data URL string (e.g., data:image/png;base64,...) or external URL */
 	image: z.string().min(10, 'Image is required.'),
 	/** Optional: anatomical site or context provided by user */
-	context: z.string().optional(),
+	context: z.string().nullable().optional(),
 });
 export type ImageDiseaseAnalysisInput = z.infer<typeof ImageDiseaseAnalysisInputSchema>;
 
@@ -72,7 +73,7 @@ Return the following sections:
 3) Recommended Actions (bulleted)
 4) Confidence (qualitative)`;
 		const { text } = await ai.generate({
-			model: googleAI.model('gemini-pro-latest'),
+			model: googleAI.model('gemini-2.5-flash'),
 			messages: [
 				{
 					role: 'user',
@@ -100,7 +101,7 @@ function inferMimeTypeFromDataUrl(dataUrl: string): string {
 function extractSections(text: string): ImageDiseaseAnalysisOutput {
 	// Very simple parsing based on headings; fallback to entire text as summary
 	const get = (label: string) => {
-		const regex = new RegExp(`${label}[:\n]+([\s\S]*?)(?:\n\n|$)`, 'i');
+		const regex = new RegExp(`${label}[:\\n]+([\\s\\S]*?)(?:\\n\\n|$)`, 'i');
 		const m = text.match(regex);
 		return m ? m[1].trim() : '';
 	};

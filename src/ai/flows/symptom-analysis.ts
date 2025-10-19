@@ -9,6 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
+import { googleAI } from '@genkit-ai/googleai';
 import {z} from 'genkit';
 
 const SymptomAnalysisInputSchema = z.object({
@@ -34,18 +35,6 @@ export async function analyzeSymptoms(input: SymptomAnalysisInput): Promise<Symp
   return symptomAnalysisFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'symptomAnalysisPrompt',
-  input: {schema: SymptomAnalysisInputSchema},
-  output: {schema: SymptomAnalysisOutputSchema},
-  prompt: `You are a medical assistant that helps users understand possible health concerns based on their symptoms.
-
-You will take a list of symptoms and provide possible conditions and recommended actions.
-
-Symptoms: {{{symptoms}}}
-`,
-});
-
 const symptomAnalysisFlow = ai.defineFlow(
   {
     name: 'symptomAnalysisFlow',
@@ -53,7 +42,16 @@ const symptomAnalysisFlow = ai.defineFlow(
     outputSchema: SymptomAnalysisOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await ai.generate({
+      model: googleAI.model('gemini-pro-latest'),
+      prompt: `You are a medical assistant that helps users understand possible health concerns based on their symptoms.
+
+You will take a list of symptoms and provide possible conditions and recommended actions.
+
+Symptoms: ${input.symptoms}
+`,
+      output: { schema: SymptomAnalysisOutputSchema },
+    });
     return output!;
   }
 );
