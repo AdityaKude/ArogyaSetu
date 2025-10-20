@@ -1,7 +1,4 @@
 
-Test Credentials:
-User Login: Phone: +919876543210, Password: password123
-Admin Login: Email: admin@arogyasetu.gov, Password: admin123
 
 Features Working:
 ✅ User Signup - Create new accounts
@@ -75,7 +72,6 @@ It provides **voice, sign, text, and facial interaction modes** for inclusivity 
 
 ## 🏗️ System Architecture
 
-![System Architecture](https://raw.githubusercontent.com/yourusername/AI-HealthChatbot/main/docs/System_Architecture.png)
 
 User (Text / Voice / Sign / Facial Input)
 │
