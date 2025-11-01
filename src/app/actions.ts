@@ -1,5 +1,5 @@
 'use server';
-import { ActionResult, VoiceAnalysisAction, AudioAnalysisAction, ImageDiseaseAnalysisAction, SignLanguageFlowAction } from './types';
+import { ActionResult, VoiceAnalysisAction, AudioAnalysisAction, ImageDiseaseAnalysisAction, SignLanguageFlowAction } from '@/lib/types';
 
 import {
   analyzeSymptoms,
@@ -161,3 +161,61 @@ export async function analyzeAudioFile(
       return { success: false, message: 'An error occurred during sign language processing.' };
     }
   }
+
+export async function sendWhatsAppMessage(
+  prevState: { success: boolean; message: string },
+  formData: FormData
+): Promise<{ success: boolean; message: string }> {
+  const phoneNumber = formData.get('phoneNumber') as string;
+  const message = formData.get('message') as string;
+
+  if (!phoneNumber || !message) {
+    return { success: false, message: 'Phone number and message are required.' };
+  }
+
+  try {
+    const { twilioService } = await import('@/lib/twilio');
+    const result = await twilioService.sendWhatsAppMessage({
+      to: phoneNumber,
+      body: message,
+    });
+
+    if (result.success) {
+      return { success: true, message: `WhatsApp message sent successfully. SID: ${result.sid}` };
+    } else {
+      return { success: false, message: `Failed to send WhatsApp message: ${result.error}` };
+    }
+  } catch (e: any) {
+    console.error(e);
+    return { success: false, message: `Error: ${e.message}` };
+  }
+}
+
+export async function sendSMSMessage(
+  prevState: { success: boolean; message: string },
+  formData: FormData
+): Promise<{ success: boolean; message: string }> {
+  const phoneNumber = formData.get('phoneNumber') as string;
+  const message = formData.get('message') as string;
+
+  if (!phoneNumber || !message) {
+    return { success: false, message: 'Phone number and message are required.' };
+  }
+
+  try {
+    const { twilioService } = await import('@/lib/twilio');
+    const result = await twilioService.sendSMSMessage({
+      to: phoneNumber,
+      body: message,
+    });
+
+    if (result.success) {
+      return { success: true, message: `SMS sent successfully. SID: ${result.sid}` };
+    } else {
+      return { success: false, message: `Failed to send SMS: ${result.error}` };
+    }
+  } catch (e: any) {
+    console.error(e);
+    return { success: false, message: `Error: ${e.message}` };
+  }
+}

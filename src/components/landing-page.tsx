@@ -33,7 +33,9 @@ export function LandingPage() {
                   <Button variant="outline" onClick={scrollToFeatures}>Learn More</Button>
                 </div>
               </div>
-              <BotMessageSquare title="ArogyaSetu AI Assistant Icon" className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square text-primary" />
+              <div className="mx-auto flex items-center justify-center sm:w-full lg:order-last">
+                <BotMessageSquare className="h-64 w-64 text-primary" />
+              </div>
             </div>
           </div>
         </section>

@@ -9,7 +9,7 @@ export default function SignLanguagePage() {
       <p className="text-lg text-center mb-8">
         Communicate using Indian Sign Language (ISL). Record a video of your signs, and the chatbot will respond in ISL.
       </p>
-      <ChatInterface enableSignLanguage={true} />
+      <ChatInterface />
     </main>
   );
 }
