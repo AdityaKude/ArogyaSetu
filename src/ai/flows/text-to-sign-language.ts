@@ -1,5 +1,5 @@
 import {ai} from '../genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 // Define the input schema for the text-to-sign-language flow
 export const TextToSignLanguageInputSchema = z.object({

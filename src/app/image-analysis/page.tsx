@@ -53,9 +53,8 @@ export default function ImageAnalysisPage() {
 						required
 					/>
 					{preview && (
-						<div className="relative mt-2 w-full overflow-hidden rounded-md border">
-							{/* eslint-disable-next-line @next/next/no-img-element */}
-							<img src={preview} alt="preview" className="w-full h-auto" />
+						<div className="relative mt-2 w-full overflow-hidden rounded-md border aspect-video">
+							<Image src={preview} alt="preview" fill className="object-contain" unoptimized />
 						</div>
 					)}
 				</div>

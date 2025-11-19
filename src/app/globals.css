@@ -21,6 +21,55 @@
   .text-balance {
     text-wrap: balance;
   }
+  /* Fade-in on scroll */
+  [data-aos] {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 500ms ease, transform 500ms ease;
+    will-change: opacity, transform;
+  }
+  .aos-animate {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  /* Subtle hover scale for images/cards */
+  .hover-scale {
+    transition: transform 300ms ease;
+  }
+  .hover-scale:hover {
+    transform: scale(1.02);
+  }
+  /* Button glow effect */
+  .btn-glow {
+    transition: box-shadow 200ms ease, transform 150ms ease;
+  }
+  .btn-glow:hover,
+  .btn-glow:focus-visible {
+    box-shadow: 0 8px 24px rgba(14, 165, 233, 0.25); /* sky-500 glow */
+    transform: translateY(-1px);
+  }
+  /* Skip to content for accessibility */
+  .skip-to-content {
+    position: absolute;
+    left: -9999px;
+    z-index: 999;
+  }
+  .skip-to-content:focus {
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.75rem 1.5rem;
+    background: rgb(14 165 233);
+    color: white;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    top: 1rem;
+  }
+  /* Focus visible improvements */
+  *:focus-visible {
+    outline: 2px solid rgb(14 165 233);
+    outline-offset: 2px;
+    border-radius: 0.25rem;
+  }
 }
 
 

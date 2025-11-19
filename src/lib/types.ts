@@ -1,3 +1,4 @@
+'use client';
 import type { ReactNode } from 'react';
 import type { SymptomAnalysisOutput } from '@/ai/flows/symptom-analysis';
 import type { HealthInfoOutput } from '@/ai/flows/health-information-retrieval';
@@ -48,10 +49,4 @@ export type SignLanguageFlowAction = {
         responseText: string;
         responseVideo: string;
     };
-};
-
-export type EmergencyContact = {
-    name: string;
-    phone: string;
-    type: 'General' | 'Police' | 'Fire' | 'Ambulance';
 };

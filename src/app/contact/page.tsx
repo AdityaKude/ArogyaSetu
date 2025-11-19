@@ -14,7 +14,7 @@ export default function ContactPage() {
         </p>
         <div className="mt-8">
             <p>For any inquiries, please reach out to the project team.</p>
-            <p className='mt-2'>This project was developed for the Smart India Hackathon.</p>
+            <p className='mt-2'>This project was developed for the Health Project.</p>
         </div>
       </main>
       

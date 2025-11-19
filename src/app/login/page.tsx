@@ -38,7 +38,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Mock authentication functions
+  // Authentication functions
   const handleUserSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -62,20 +62,25 @@ export default function LoginPage() {
       setIsLoading(false);
       return;
     }
-
-    // Simulate API call
-    setTimeout(() => {
-      const userData = {
-        id: Date.now(),
-        name,
-        phone,
-        language,
-        role: 'user' as const,
-      };
-      login(userData);
+    try {
+      const resp = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, phone, language, password }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        setMessage(data.error || 'Signup failed');
+        setIsLoading(false);
+        return;
+      }
+      login(data.user);
       setMessage('Account created successfully!');
       router.push('/chat');
-    }, 1000);
+    } catch (err) {
+      setMessage('Network error during signup');
+      setIsLoading(false);
+    }
   };
 
   const handleUserLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -93,25 +98,25 @@ export default function LoginPage() {
       setIsLoading(false);
       return;
     }
-
-    // Mock authentication
-    setTimeout(() => {
-      if (phone === '+919876543210' && password === 'password123') {
-        const userData = {
-          id: 1,
-          name: 'John Doe',
-          phone,
-          language: 'en',
-          role: 'user' as const,
-        };
-        login(userData);
-        setMessage('Login successful!');
-        router.push('/chat');
-      } else {
-        setMessage('Invalid phone number or password');
+    try {
+      const resp = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, password }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        setMessage(data.error || 'Login failed');
         setIsLoading(false);
+        return;
       }
-    }, 1000);
+      login(data.user);
+      setMessage('Login successful!');
+      router.push('/chat');
+    } catch (err) {
+      setMessage('Network error during login');
+      setIsLoading(false);
+    }
   };
 
   const handleAdminLogin = async (e: React.FormEvent<HTMLFormElement>) => {

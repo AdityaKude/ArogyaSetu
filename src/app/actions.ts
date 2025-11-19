@@ -1,5 +1,5 @@
 'use server';
-import { ActionResult, VoiceAnalysisAction, AudioAnalysisAction, ImageDiseaseAnalysisAction, SignLanguageFlowAction } from '@/lib/types';
+import { ActionResult, VoiceAnalysisAction, AudioAnalysisAction, ImageDiseaseAnalysisAction, SignLanguageFlowAction } from './types';
 
 import {
   analyzeSymptoms,
@@ -15,6 +15,7 @@ import { analyzeVoice, VoiceAnalysisInput } from '@/ai/flows/voice-analysis';
 import { audioAnalysisFlow, AudioAnalysisInput } from '@/ai/flows/audio-analysis';
 import { signLanguageAnalysisFlow, SignLanguageInput } from '@/ai/flows/sign-language-analysis';
 import { textToSignLanguageFlow, TextToSignLanguageInput } from '@/ai/flows/text-to-sign-language';
+import { twilioService } from '@/lib/twilio';
 
 async function toBase64(file: File): Promise<string> {
     const bytes = await file.arrayBuffer();
@@ -162,33 +163,23 @@ export async function analyzeAudioFile(
     }
   }
 
+// Messaging admin actions
 export async function sendWhatsAppMessage(
   prevState: { success: boolean; message: string },
   formData: FormData
 ): Promise<{ success: boolean; message: string }> {
   const phoneNumber = formData.get('phoneNumber') as string;
-  const message = formData.get('message') as string;
+  const body = formData.get('message') as string;
 
-  if (!phoneNumber || !message) {
+  if (!phoneNumber || !body) {
     return { success: false, message: 'Phone number and message are required.' };
   }
 
-  try {
-    const { twilioService } = await import('@/lib/twilio');
-    const result = await twilioService.sendWhatsAppMessage({
-      to: phoneNumber,
-      body: message,
-    });
-
-    if (result.success) {
-      return { success: true, message: `WhatsApp message sent successfully. SID: ${result.sid}` };
-    } else {
-      return { success: false, message: `Failed to send WhatsApp message: ${result.error}` };
-    }
-  } catch (e: any) {
-    console.error(e);
-    return { success: false, message: `Error: ${e.message}` };
+  const result = await twilioService.sendWhatsAppMessage({ to: phoneNumber, body });
+  if (result.success) {
+    return { success: true, message: 'WhatsApp message sent successfully.' };
   }
+  return { success: false, message: `Failed to send WhatsApp message: ${result.error}` };
 }
 
 export async function sendSMSMessage(
@@ -196,26 +187,15 @@ export async function sendSMSMessage(
   formData: FormData
 ): Promise<{ success: boolean; message: string }> {
   const phoneNumber = formData.get('phoneNumber') as string;
-  const message = formData.get('message') as string;
+  const body = formData.get('message') as string;
 
-  if (!phoneNumber || !message) {
+  if (!phoneNumber || !body) {
     return { success: false, message: 'Phone number and message are required.' };
   }
 
-  try {
-    const { twilioService } = await import('@/lib/twilio');
-    const result = await twilioService.sendSMSMessage({
-      to: phoneNumber,
-      body: message,
-    });
-
-    if (result.success) {
-      return { success: true, message: `SMS sent successfully. SID: ${result.sid}` };
-    } else {
-      return { success: false, message: `Failed to send SMS: ${result.error}` };
-    }
-  } catch (e: any) {
-    console.error(e);
-    return { success: false, message: `Error: ${e.message}` };
+  const result = await twilioService.sendSMSMessage({ to: phoneNumber, body });
+  if (result.success) {
+    return { success: true, message: 'SMS sent successfully.' };
   }
+  return { success: false, message: `Failed to send SMS: ${result.error}` };
 }

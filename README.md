@@ -213,5 +213,5 @@ Frontend can be run by opening /frontend/index.html in a browser.
 📞 Contact
 📧 teamhealthai@kletech.ac.in
 🏫 KLE Institute of Technology, Hubballi, Karnataka
-🎯 Smart India Hackathon 2025 – Software Edition
+🎯 Health Project 2025 – Software Edition
 

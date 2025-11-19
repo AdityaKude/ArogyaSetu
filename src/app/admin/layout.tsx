@@ -91,7 +91,7 @@ export default function AdminLayout({
           <div className="mt-auto p-4">
             <Card>
               <CardHeader className="p-2 pt-0 md:p-4">
-                <CardTitle>SIH 2025</CardTitle>
+                <CardTitle>Health Care 2025</CardTitle>
                 <CardDescription>
                   This is built for healthier Society.
                 </CardDescription>
