@@ -33,8 +33,18 @@ export function SiteHeader() {
     setIsMobileMenuOpen(false);
   };
 
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-50 backdrop-blur supports-[backdrop-filter]:bg-white/80 bg-white/80 border-b px-4 lg:px-6 h-14 flex items-center shadow-sm">
+    <header className={`sticky top-0 z-50 backdrop-blur-md supports-[backdrop-filter]:bg-white/90 bg-white/90 border-b px-4 lg:px-6 h-16 flex items-center transition-all duration-300 ${scrolled ? 'shadow-lg' : 'shadow-sm'}`}>
       <Link href="/" className="flex items-center justify-center" prefetch={false} aria-label="ArogyaSetu Home">
         <Logo className="h-6 w-6 text-sky-600" />
         <span className="font-bold ml-2 bg-clip-text text-transparent bg-gradient-to-b from-sky-600 to-emerald-600">ArogyaSetu</span>
@@ -71,7 +81,7 @@ export function SiteHeader() {
           {t('nav.quiz')}
         </Link>
         <Link
-          href="/chat"
+          href="/login"
           className="text-sm font-medium hover:text-sky-600 transition-colors duration-200"
           prefetch={false}
         >
@@ -122,7 +132,7 @@ export function SiteHeader() {
           {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
         </button>
         </div>
-        <Link href="/chat" prefetch={false}>
+        <Link href="/login" prefetch={false}>
           <Button className="h-9 px-4 bg-sky-600 hover:bg-sky-700 text-white rounded-full btn-glow transition-colors duration-200">
             {t('nav.get-started')}
           </Button>
@@ -141,7 +151,7 @@ export function SiteHeader() {
 
       {/* Mobile Navigation */}
       {isMobileMenuOpen && (
-        <nav className="absolute top-14 left-0 right-0 bg-background border-b shadow-lg md:hidden">
+        <nav className="absolute top-16 left-0 right-0 bg-background/95 backdrop-blur-md border-b shadow-xl md:hidden">
           <div className="px-4 py-4 space-y-3">
             {/* Language selector for mobile */}
             <div className="relative pb-2 border-b">
@@ -198,7 +208,7 @@ export function SiteHeader() {
               {t('nav.quiz')}
             </Link>
             <Link
-              href="/chat"
+              href="/login"
               className="block text-sm font-medium hover:text-sky-600 transition-colors duration-200"
               prefetch={false}
               onClick={() => setIsMobileMenuOpen(false)}
@@ -213,7 +223,7 @@ export function SiteHeader() {
             >
               {t('nav.login')}
             </Link>
-            <Link href="/chat" prefetch={false} onClick={() => setIsMobileMenuOpen(false)}>
+            <Link href="/login" prefetch={false} onClick={() => setIsMobileMenuOpen(false)}>
               <Button className="w-full h-9 mt-2 bg-sky-600 hover:bg-sky-700 text-white rounded-full btn-glow transition-colors duration-200">
                 {t('nav.get-started')}
               </Button>

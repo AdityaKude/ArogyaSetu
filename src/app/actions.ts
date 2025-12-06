@@ -1,5 +1,5 @@
 'use server';
-import { ActionResult, VoiceAnalysisAction, AudioAnalysisAction, ImageDiseaseAnalysisAction, SignLanguageFlowAction } from './types';
+import { ActionResult, VoiceAnalysisAction, AudioAnalysisAction, ImageDiseaseAnalysisAction, SignLanguageFlowAction } from '@/lib/types';
 
 import {
   analyzeSymptoms,

@@ -42,7 +42,7 @@ export function SiteFooter() {
               <Link href="/quiz" className="text-sm text-muted-foreground hover:text-sky-600 transition-colors" prefetch={false}>
                 Health Quiz
               </Link>
-              <Link href="/chat" className="text-sm text-muted-foreground hover:text-sky-600 transition-colors" prefetch={false}>
+              <Link href="/login" className="text-sm text-muted-foreground hover:text-sky-600 transition-colors" prefetch={false}>
                 Chatbot
               </Link>
             </nav>

@@ -9,6 +9,7 @@ interface User {
   email?: string;
   language?: string;
   role: 'user' | 'admin';
+  lastLogin?: string;
 }
 
 interface AuthContextType {

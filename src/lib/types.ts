@@ -50,3 +50,9 @@ export type SignLanguageFlowAction = {
         responseVideo: string;
     };
 };
+
+export interface EmergencyContact {
+  name: string;
+  phone: string;
+  type: 'Ambulance' | 'Police' | 'Fire' | 'General';
+}

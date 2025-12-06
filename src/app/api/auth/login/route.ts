@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { findUserByPhone, findUserByEmail, StoredUser } from '@/lib/user-store';
+import { findUserByPhone, findUserByEmail, StoredUser, updateUserLastLogin } from '@/lib/user-store';
 
 export async function POST(req: Request) {
   try {
@@ -17,7 +17,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const { password: _pw, ...publicUser } = user as StoredUser & { password?: string };
+    // Update last login time
+    await updateUserLastLogin(user.id);
+
+    // Get updated user data
+    const updatedUser = phone
+      ? await findUserByPhone(phone)
+      : await findUserByEmail(email);
+
+    const { password: _pw, ...publicUser } = updatedUser as StoredUser & { password?: string };
     return NextResponse.json({ user: publicUser });
   } catch (e: any) {
     return NextResponse.json({ error: 'Login failed' }, { status: 500 });

@@ -143,6 +143,7 @@ export default function LoginPage() {
           name: 'Admin User',
           email,
           role: 'admin' as const,
+          lastLogin: new Date().toISOString(),
         };
         login(adminData);
         setMessage('Admin login successful!');
@@ -191,7 +192,7 @@ export default function LoginPage() {
             Quiz
           </Link>
           <Link
-            href="/chat"
+            href="/login"
             className="text-sm font-medium hover:underline underline-offset-4"
             prefetch={false}
           >

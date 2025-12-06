@@ -1,7 +1,7 @@
-'use server';
 import { NextRequest, NextResponse } from 'next/server';
 import { messagingWebhook } from '@/ai/flows/messaging-webhook';
 import { analyzeImageDisease } from '@/ai/flows/image-disease-analysis';
+import { twilioService } from '@/lib/twilio';
 
 // --- Helper Functions for TwiML --- //
 
@@ -11,11 +11,22 @@ import { analyzeImageDisease } from '@/ai/flows/image-disease-analysis';
  * @returns A NextResponse object with the TwiML content.
  */
 function createTwiMLResponse(message: string): NextResponse {
+  const escapedMessage = escapeXml(message);
   const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Message>${escapeXml(message)}</Message>
+  <Message>${escapedMessage}</Message>
 </Response>`;
-  return new NextResponse(twiml, { headers: { 'Content-Type': 'text/xml' } });
+  
+  console.log('Sending TwiML response:', twiml);
+  
+  return new NextResponse(twiml, { 
+    status: 200,
+    headers: { 
+      'Content-Type': 'text/xml; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'X-Content-Type-Options': 'nosniff'
+    } 
+  });
 }
 
 /**
@@ -35,27 +46,61 @@ function escapeXml(str: string): string {
 // --- Main Webhook Logic --- //
 
 export async function POST(request: NextRequest) {
+  // Immediately acknowledge the webhook to prevent timeout
+  const formData = await request.formData();
+  const from = formData.get('From') as string;
+  const body = formData.get('Body') as string;
+  const messageSid = formData.get('MessageSid') as string;
+  const numMedia = parseInt((formData.get('NumMedia') as string) || '0', 10);
+  const mediaUrl = formData.get('MediaUrl0') as string | null;
+  const mediaContentType = formData.get('MediaContentType0') as string | null;
+
+  console.log('Received Twilio webhook:', { from, body, messageSid, mediaContentType });
+
+  // Handle empty messages immediately
+  if (!body && numMedia === 0) {
+    console.log('Empty message body and no media. Acknowledging and closing.');
+    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', { 
+      headers: { 'Content-Type': 'text/xml' },
+      status: 200
+    });
+  }
+
+  if (!from) {
+    console.error('Missing required field: From');
+    return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', { 
+      headers: { 'Content-Type': 'text/xml' },
+      status: 200
+    });
+  }
+
+  // Acknowledge immediately to prevent timeout, then process asynchronously
+  const acknowledgeResponse = new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', { 
+    headers: { 'Content-Type': 'text/xml' },
+    status: 200
+  });
+
+  // Process the message asynchronously and send via API
+  processMessageAsync(from, body, numMedia, mediaUrl, mediaContentType).catch(error => {
+    console.error('Error processing message asynchronously:', error);
+    // Try to send error message via API
+    twilioService.sendWhatsAppMessage({
+      to: from,
+      body: "Sorry, an unexpected error occurred. Please try again later."
+    }).catch(err => console.error('Failed to send error message:', err));
+  });
+
+  return acknowledgeResponse;
+}
+
+async function processMessageAsync(
+  from: string,
+  body: string | null,
+  numMedia: number,
+  mediaUrl: string | null,
+  mediaContentType: string | null
+) {
   try {
-    const formData = await request.formData();
-
-    const from = formData.get('From') as string;
-    const body = formData.get('Body') as string;
-    const messageSid = formData.get('MessageSid') as string;
-    const numMedia = parseInt((formData.get('NumMedia') as string) || '0', 10);
-    const mediaUrl = formData.get('MediaUrl0') as string | null;
-    const mediaContentType = formData.get('MediaContentType0') as string | null;
-
-    console.log('Received Twilio webhook:', { from, body, messageSid, mediaContentType });
-
-    if (!body && numMedia === 0) {
-      console.log('Empty message body and no media. Acknowledging and closing.');
-      return new NextResponse('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', { headers: { 'Content-Type': 'text/xml' } });
-    }
-
-    if (!from) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
     let responseText: string;
 
     // --- Media Handling --- //
@@ -95,23 +140,52 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // --- Text Message Handling --- //
-      const result = await messagingWebhook({ From: from, Body: body || '' });
-      console.log('AI response generated:', result);
-      responseText = result.body;
+      if (!body || body.trim() === '') {
+        responseText = "Please send a message with your health question or symptoms.";
+      } else {
+        const result = await messagingWebhook({ From: from, Body: body });
+        console.log('AI response generated:', result);
+        responseText = result?.body || "Sorry, I couldn't process your message. Please try again.";
+      }
     }
 
-    // --- Return TwiML to send the reply --- //
-    return createTwiMLResponse(responseText);
+    // Ensure we have a response text
+    if (!responseText || responseText.trim() === '') {
+      responseText = "Sorry, I couldn't generate a response. Please try again.";
+    }
+
+    // Send the response via Twilio API instead of TwiML
+    console.log('Sending response via Twilio API to:', from);
+    console.log('Response text (first 200 chars):', responseText.substring(0, 200) + '...');
+    
+    const sendResult = await twilioService.sendWhatsAppMessage({
+      to: from,
+      body: responseText
+    });
+
+    if (sendResult.success) {
+      console.log('Message sent successfully via Twilio API:', sendResult.sid);
+    } else {
+      console.error('Failed to send message via Twilio API:', sendResult.error);
+    }
 
   } catch (error: any) {
-    console.error('Twilio webhook error:', error);
+    console.error('Error in processMessageAsync:', error);
 
     let errorMessage = "Sorry, an unexpected error occurred. Please try again later.";
     if (error.message?.includes('Quota exceeded')) {
       errorMessage = 'I am currently assisting many users and have reached my temporary limit. Please try again in a minute.';
     }
 
-    return createTwiMLResponse(errorMessage);
+    // Try to send error message
+    try {
+      await twilioService.sendWhatsAppMessage({
+        to: from,
+        body: errorMessage
+      });
+    } catch (sendError) {
+      console.error('Failed to send error message:', sendError);
+    }
   }
 }
 

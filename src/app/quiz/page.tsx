@@ -187,7 +187,7 @@ export default function QuizPage() {
           <Link href="/#features" className="text-sm font-medium hover:text-sky-600 transition-colors" prefetch={false}>Features</Link>
           <Link href="/about" className="text-sm font-medium hover:text-sky-600 transition-colors" prefetch={false}>About</Link>
           <Link href="/quiz" className="text-sm font-medium hover:text-sky-600 transition-colors" prefetch={false}>Quiz</Link>
-          <Link href="/chat" className="text-sm font-medium hover:text-sky-600 transition-colors" prefetch={false}>Chatbot</Link>
+          <Link href="/login" className="text-sm font-medium hover:text-sky-600 transition-colors" prefetch={false}>Chatbot</Link>
           <Link href="/login" className="text-sm font-medium hover:text-sky-600 transition-colors" prefetch={false}>Login</Link>
         </nav>
       </header>

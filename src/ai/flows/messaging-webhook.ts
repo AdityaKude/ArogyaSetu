@@ -1,7 +1,8 @@
 'use server';
 
 import { ai } from '@/ai/genkit';
-import { z } from 'zod';
+import { googleAI } from '@genkit-ai/googleai';
+import { z } from 'genkit';
 import { analyzeSymptoms } from './symptom-analysis';
 import { getHealthInfo } from './health-information-retrieval';
 
@@ -24,6 +25,11 @@ const MessageRouteSchema = z.enum([
   'unrelated',
 ]);
 
+// Wrapped schema for better structured output compatibility
+const MessageRouteOutputSchema = z.object({
+  classification: MessageRouteSchema.describe('The classification category for the message'),
+});
+
 // --- AI-Powered Message Routing ---
 
 const routeMessage = ai.defineFlow(
@@ -32,22 +38,41 @@ const routeMessage = ai.defineFlow(
     inputSchema: z.object({ message: z.string() }),
     outputSchema: MessageRouteSchema,
   },
-  async ({ message }) => {
-    const { text: result } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-2.0',
-      prompt: `You are an intelligent message router for a healthcare chatbot.
-      Analyze the user's message and classify it into one of the following categories:
-      - 'symptom_analysis': If the user is describing their own symptoms or how they feel (e.g., "I have a headache," "I feel sick").
-      - 'health_info': If the user is asking a general question about a medical condition, treatment, or health topic (e.g., "What are the symptoms of diabetes?", "How to treat a cold?").
-      - 'unrelated': If the message is a greeting, thank you, or not related to health.
+  async ({ message }): Promise<z.infer<typeof MessageRouteSchema>> => {
+    try {
+      const { output } = await ai.generate({
+        model: googleAI.model('gemini-pro-latest'),
+        prompt: `You are an intelligent message router for a healthcare chatbot.
+        Analyze the user's message and classify it into one of the following categories:
+        - 'symptom_analysis': If the user is describing their own symptoms or how they feel (e.g., "I have a headache," "I feel sick").
+        - 'health_info': If the user is asking a general question about a medical condition, treatment, or health topic (e.g., "What are the symptoms of diabetes?", "How to treat a cold?").
+        - 'unrelated': If the message is a greeting, thank you, or not related to health.
 
-      Message: "${message}"
+        Message: "${message}"
 
-      Classification:`,
-      output: { schema: MessageRouteSchema },
-      config: { temperature: 0 }, // Use low temperature for consistent classification
-    });
-    return result || 'unrelated';
+        Return the classification as a JSON object with a "classification" field containing one of: symptom_analysis, health_info, or unrelated.`,
+        output: { schema: MessageRouteOutputSchema },
+        config: { temperature: 0 }, // Use low temperature for consistent classification
+      });
+      
+      // Validate the output
+      if (!output || typeof output !== 'object' || !('classification' in output)) {
+        console.warn('Invalid output from routeMessage:', output);
+        return 'unrelated';
+      }
+      
+      // Ensure the classification is one of the valid enum values
+      const route = MessageRouteSchema.safeParse(output.classification);
+      if (route.success) {
+        return route.data;
+      }
+      
+      console.warn('Classification did not match schema:', output.classification);
+      return 'unrelated';
+    } catch (error) {
+      console.error('Error in routeMessage:', error);
+      return 'unrelated';
+    }
   }
 );
 

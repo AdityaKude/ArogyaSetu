@@ -9,6 +9,7 @@ export type StoredUser = {
   language?: string;
   role: 'user' | 'admin';
   password: string; // demo only; do NOT keep plain text in production
+  lastLogin?: string; // ISO date string
 };
 
 const dataDir = path.join(process.cwd(), 'data');
@@ -53,6 +54,15 @@ export async function createUser(user: Omit<StoredUser, 'id'>): Promise<StoredUs
   users.push(newUser);
   await fs.writeFile(usersFile, JSON.stringify(users, null, 2));
   return newUser;
+}
+
+export async function updateUserLastLogin(userId: number): Promise<void> {
+  const users = await getAllUsers();
+  const userIndex = users.findIndex(u => u.id === userId);
+  if (userIndex !== -1) {
+    users[userIndex].lastLogin = new Date().toISOString();
+    await fs.writeFile(usersFile, JSON.stringify(users, null, 2));
+  }
 }
 
 

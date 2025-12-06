@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview Analyzes audio clips to detect health-related acoustic cues.
  *

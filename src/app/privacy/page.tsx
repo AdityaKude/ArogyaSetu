@@ -39,7 +39,7 @@ export default function PrivacyPage() {
             Quiz
           </Link>
           <Link
-            href="/chat"
+            href="/login"
             className="text-sm font-medium hover:underline underline-offset-4"
             prefetch={false}
           >

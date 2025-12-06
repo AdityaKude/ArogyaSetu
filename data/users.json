@@ -10,9 +10,18 @@
   {
     "id": 1762352639170,
     "name": "Gireesh Biradar",
-    "phone": "+91 9019026333",s
+    "phone": "+91 9019026333",
     "language": "kn",
     "role": "user",
     "password": "Prashant@1234"
+  },
+  {
+    "id": 1764874148272,
+    "name": "guru",
+    "phone": "+91 1472583698",
+    "language": "kn",
+    "role": "user",
+    "password": "123456",
+    "lastLogin": "2025-12-04T18:52:43.844Z"
   }
 ]

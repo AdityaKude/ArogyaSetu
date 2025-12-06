@@ -1,3 +1,4 @@
+'use client';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -6,33 +7,39 @@ import { Textarea } from "@/components/ui/textarea";
 
 export default function AlertsPage() {
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Alerts Manager</h1>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Alerts</h1>
+        <p className="text-muted-foreground mt-1">Send health alerts to users</p>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Push New Outbreak Alert</CardTitle>
+          <CardTitle>Create New Alert</CardTitle>
           <CardDescription>
-            This alert will be sent to all users in the specified region.
+            Send a health alert to users in a specific region
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="disease">Disease</Label>
-              <Input id="disease" placeholder="e.g., Dengue, Malaria" />
+          <form className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="disease">Disease / Condition</Label>
+              <Input id="disease" placeholder="e.g., Dengue, Malaria, COVID-19" required />
             </div>
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <Label htmlFor="location">Location / Region</Label>
-              <Input id="location" placeholder="e.g., Patna, Mumbai" />
+              <Input id="location" placeholder="e.g., Mumbai, Delhi, Karnataka" required />
             </div>
-            <div className="grid gap-2">
+            <div className="space-y-2">
               <Label htmlFor="message">Alert Message</Label>
               <Textarea
                 id="message"
-                placeholder="e.g., High-risk of Dengue reported. Please use mosquito nets and remove stagnant water."
+                placeholder="Enter the alert message with prevention tips and recommendations..."
+                rows={5}
+                required
               />
             </div>
-            <Button type="submit">Send Alert</Button>
+            <Button type="submit" className="w-full">Send Alert</Button>
           </form>
         </CardContent>
       </Card>
