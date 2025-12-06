@@ -531,7 +531,7 @@ Contributions are welcome! Please follow these steps:
 
 ## 📞 Contact
 
-- **Email**: teamhealthai@kletech.ac.in
+- **Email**: kudeaditya@gmail.com
 - **Institution**: KLE Institute of Technology, Hubballi
 - **Project**: Health Project 2025 – Software Edition
 
